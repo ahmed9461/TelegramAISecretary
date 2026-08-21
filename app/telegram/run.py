@@ -8,6 +8,8 @@ from app.telegram.approval_edit_ui import router as approval_edit_router
 from app.telegram.behavior_ui import router as behavior_router
 from app.telegram.bootstrap import build_dispatcher
 from app.telegram.brain_ui import router as brain_router
+from app.telegram.bulk_knowledge_ui import router as bulk_knowledge_router
+from app.telegram.interface_ui import router as interface_router
 from app.telegram.knowledge_manage_ui import router as knowledge_manage_router
 from app.telegram.memory_ui import router as memory_router
 from app.telegram.policy_manage_ui import router as policy_manage_router
@@ -27,6 +29,8 @@ async def main() -> None:
     dp.include_router(memory_router)
     dp.include_router(knowledge_manage_router)
     dp.include_router(policy_manage_router)
+    dp.include_router(bulk_knowledge_router)
+    dp.include_router(interface_router)
     dp.include_router(brain_router)
     await dp.start_polling(
         bot,
