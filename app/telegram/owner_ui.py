@@ -35,8 +35,22 @@ def approval_keyboard(approval_id: int) -> InlineKeyboardMarkup:
                     text="✅ إرسال الرد", callback_data=f"approval:send:{approval_id}"
                 ),
                 InlineKeyboardButton(
-                    text="❌ رفض", callback_data=f"approval:reject:{approval_id}"
+                    text="✏️ تعديل الرد", callback_data=f"approval_edit:start:{approval_id}"
                 ),
-            ]
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📚 المصادر", callback_data=f"approval_meta:sources:{approval_id}"
+                ),
+                InlineKeyboardButton(
+                    text="🧠 تعلّم من تعديلي",
+                    callback_data=f"approval_edit:learn:{approval_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❌ رفض", callback_data=f"approval:reject:{approval_id}"
+                )
+            ],
         ]
     )
