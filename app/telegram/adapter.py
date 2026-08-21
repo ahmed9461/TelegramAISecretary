@@ -20,7 +20,7 @@ class AiogramTelegramAdapter:
         self.bot = bot
 
     @staticmethod
-    def _default_reply_markup(*, chat_id: int, reply_text: str):
+    def _default_reply_markup(*, chat_id: int, reply_text: str, intent: str = ""):
         settings = get_settings()
         with SessionLocal() as session:
             owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
@@ -51,6 +51,7 @@ class AiogramTelegramAdapter:
                     "user_text": latest_user_text,
                     "reply_text": reply_text,
                     "text": f"{latest_user_text}\n{reply_text}",
+                    "intent": intent,
                 },
             )
             session.commit()
@@ -65,9 +66,14 @@ class AiogramTelegramAdapter:
         reply_markup=None,
         attach_default_menu: bool = True,
         native_rich: bool = True,
+        intent: str = "",
     ) -> int:
         if reply_markup is None and attach_default_menu:
-            reply_markup = self._default_reply_markup(chat_id=chat_id, reply_text=text)
+            reply_markup = self._default_reply_markup(
+                chat_id=chat_id,
+                reply_text=text,
+                intent=intent,
+            )
         rendered = render_native_rich(text) if native_rich else None
         message = await self.bot.send_message(
             chat_id=chat_id,

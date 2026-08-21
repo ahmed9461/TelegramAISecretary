@@ -87,7 +87,7 @@ M5 was tested live through Telegram Business and accepted for merge into `main` 
 
 ## M6 — Secretary Learning, Bulk Knowledge & Contextual UI
 
-**Status: in live validation on `m6-secretary-learning`; PR #2 remains Draft.**
+**Status: local live gate passed on `m6-secretary-learning`; PR #2 remains Draft pending publish, fresh CI, review and merge.**
 
 ### Approval & learning
 
@@ -153,6 +153,28 @@ pytest: 56 passed, 1 warning
 ```
 
 The remaining warning is the Starlette TestClient/httpx deprecation warning. Full Ruff report still shows pre-existing formatting/style debt because that step is informational (`--exit-zero`); the blocking correctness gate passes.
+
+### Local live closure evidence — 2026-08-22
+
+- Bulk cancel left zero KnowledgeItems for the synthetic marker.
+- Explicit bulk approval saved three PUBLIC items and made them available to retrieval.
+- The approval Sources action showed all three retrieved items with the selected PUBLIC visibility.
+- The approved Business reply arrived once, with native Telegram bold entities and no raw markup.
+- A contextual fixed-reply button appeared for the matching payment question, executed successfully, and stayed absent from an unrelated greeting; the existing ALWAYS button remained visible.
+- The classified intent now survives the approval delay and reaches menu matching; an intent-only `GREETING` button appeared and executed in a second live smoke test.
+- The matching approval reached `SENT` with one `sent_telegram_message_id`, consistent with the single reply observed in Telegram.
+- Added fault-injection coverage for owner retry/backoff and fail-closed customer sends.
+- Removed only the three synthetic KnowledgeItems and two synthetic contextual MenuItems after verification; the pre-existing MenuItem remained.
+
+Local verification after the added tests:
+
+```text
+pytest: 60 passed, 1 warning
+compileall: PASS
+Ruff correctness gate: PASS
+```
+
+This closes the local M6 implementation/live gate. It does not claim a new remote CI run or a merge: PR #2 remains Draft and `main` is unchanged.
 
 ## Documentation hardening — 2026-08-22
 

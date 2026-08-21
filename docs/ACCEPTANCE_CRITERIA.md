@@ -97,3 +97,12 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 ```
 
 لا يسجل عدد الاختبارات في docs إلا من output فعلي.
+
+## نتيجة gate المحلي لـM6 — 2026-08-22
+
+- `pytest`: 60 passed, 1 warning.
+- Ruff correctness gate و`compileall`: PASS.
+- Telegram Business live: Bulk cancel/commit، Sources، Native Rich، contextual keyword match/non-match، وintent-only match بعد approval، وتنفيذ الأزرار: PASS.
+- الرد المطابق ظهر مرة واحدة وسجلت الموافقة معرف إرسال واحدًا.
+- Network fault injection: owner retry محدود وcustomer uncertain send دون retry: PASS.
+- CI البعيد الجديد والمراجعة والدمج ليست ضمن هذه النتيجة بعد؛ PR #2 بقي Draft و`main` لم يتغير.

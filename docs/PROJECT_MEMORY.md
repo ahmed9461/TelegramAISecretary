@@ -6,9 +6,10 @@
 
 - المرحلة الحالية: **M6 — Secretary Learning, Bulk Knowledge, Rich UI & Contextual Buttons**.
 - فرع التطوير الحالي: `m6-secretary-learning`.
-- الدمج إلى `main`: لم يتم بعد؛ M6 ما زالت تحت اختبار حي عبر PR #2.
+- الدمج إلى `main`: لم يتم بعد؛ اختبار Telegram الحي النهائي نجح محليًا في 2026-08-22، وPR #2 ما زال Draft حتى نشر التغييرات وإعادة CI والمراجعة.
 - آخر CI موثق على الفرع: Python 3.12 و3.13 نجحا، مع `compileall` وRuff correctness gate و`pytest`.
 - آخر عدد اختبارات موثق في CI: **56 passed, 1 warning**.
+- آخر تحقق محلي بعد fault injection وربط intent عبر approval: **60 passed, 1 warning** مع نجاح `compileall` وRuff correctness gate.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -74,6 +75,17 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - زر رد ثابت، رابط، وتحويل للمتابعة البشرية.
 - retry محدود لرسائل المالك/بطاقات الموافقة عند أخطاء Telegram الشبكية المؤقتة؛ ردود العملاء تبقى fail-closed لمنع التكرار.
 
+## دليل إغلاق M6 المحلي — 2026-08-22
+
+- Bulk Knowledge: ثبت أن الإلغاء لا يحفظ شيئًا، ثم حفظ الاعتماد الصريح ثلاث معلومات PUBLIC فقط.
+- Source provenance: عرضت بطاقة الموافقة عناصر المعرفة الثلاثة المسترجعة، وكلها PUBLIC كما اختار المالك.
+- Native rich: وصل الرد إلى Telegram Business بكيانات تنسيق أصلية، دون raw Markdown/HTML.
+- Contextual UI: ظهر الزر السياقي للسؤال المطابق ونفذ الرد الثابت، واختفى من سؤال مستقل غير مطابق بينما بقي الزر الدائم.
+- Intent continuity: حفظ approval intent المصنف حتى الإرسال، وظهر زر تجريبي يعتمد على `GREETING` وحده في Telegram ونفذ إجراءه.
+- منع التكرار: سجلت الموافقة المطابقة حالة `SENT` ومعرف رسالة Telegram واحدًا فقط، وظهر الرد مرة واحدة في المحادثة.
+- Network resilience: اختبار fault injection يثبت محاولتين محدودتين لطلب المالك مع backoff، وعدم إعادة إرسال طلب العميل غير المؤكد.
+- حذفت بعد الاختبارات فقط عناصر المعرفة الثلاثة والزرين السياقيين الاصطناعيين، وتأكد بقاء الزر السابق الحقيقي.
+
 ## قواعد الاستمرارية
 
 1. لا تعيد بناء المشروع من الصفر ما دام التعديل يمكن دمجه في المعمارية الحالية.
@@ -89,7 +101,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة بعد تثبيت M6
 
-بعد نجاح الاختبار الحي ودمج M6، تركز المرحلة التالية على جودة الاسترجاع والذاكرة والتشغيل الإنتاجي: تقييمات retrieval، تحسين matching للأزرار السياقية، observability أفضل، إدارة ملفات معرفة أكبر، وتثبيت deployment على Ubuntu/systemd/Docker دون كسر استقلال Core عن Telegram.
+انتهى gate المحلي لـM6. الخطوة المباشرة هي مراجعة diff الحالي، نشره على PR #2، إعادة CI على Python 3.12/3.13، ثم إخراج PR من Draft ودمجه فقط بعد المراجعة. بعد الدمج يبدأ M7 على فرع مستقل لتحسين جودة retrieval وعمليات المعرفة؛ لا يبدأ M7 داخل فرع M6.
 
 ## ترتيب المراجع عند التعارض
 

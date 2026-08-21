@@ -1,6 +1,9 @@
 from types import SimpleNamespace
 
+import pytest
+
 from app.interface.service import menu_item_matches_context
+from app.telegram.adapter import AiogramTelegramAdapter
 from app.telegram.resilient_bot import is_owner_bound_method
 
 
@@ -32,3 +35,40 @@ def test_telegram_retry_is_scoped_to_owner_chat_only() -> None:
     assert is_owner_bound_method(owner_method, owner_chat_id=123) is True
     assert is_owner_bound_method(customer_method, owner_chat_id=123) is False
     assert is_owner_bound_method(no_chat_method, owner_chat_id=123) is False
+
+
+@pytest.mark.asyncio
+async def test_adapter_forwards_approval_intent_to_default_menu(monkeypatch) -> None:
+    captured: dict = {}
+
+    class FakeBot:
+        async def send_message(self, **kwargs):
+            captured["send"] = kwargs
+            return SimpleNamespace(message_id=321)
+
+    def capture_menu(*, chat_id: int, reply_text: str, intent: str = ""):
+        captured["menu"] = {
+            "chat_id": chat_id,
+            "reply_text": reply_text,
+            "intent": intent,
+        }
+        return "menu"
+
+    monkeypatch.setattr(
+        AiogramTelegramAdapter,
+        "_default_reply_markup",
+        staticmethod(capture_menu),
+    )
+    adapter = AiogramTelegramAdapter(FakeBot())
+
+    message_id = await adapter.send_text(
+        business_connection_id="bc-1",
+        chat_id=456,
+        text="طرق الدفع المتاحة",
+        native_rich=False,
+        intent="PAYMENT_METHODS",
+    )
+
+    assert message_id == 321
+    assert captured["menu"]["intent"] == "PAYMENT_METHODS"
+    assert captured["send"]["reply_markup"] == "menu"

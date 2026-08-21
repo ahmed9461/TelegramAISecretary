@@ -23,6 +23,7 @@ class MessagingAdapter(Protocol):
         chat_id: int,
         text: str,
         reply_markup: object | None = None,
+        intent: str = "",
     ) -> int: ...
 
     async def send_typing(self, *, business_connection_id: str, chat_id: int) -> None: ...

@@ -97,6 +97,8 @@ LLM response should be clean text. Telegram formatting is applied in the adapter
 
 Customer buttons may be ALWAYS or CONTEXTUAL. Contextual visibility is driven by stored rules such as keywords/intents and evaluated in local code. The LLM must not randomly choose which owner-created button appears.
 
+For approval-first replies, the classified intent must survive until the owner sends the draft. M6 stores a bounded intent marker with the existing approval reason and passes it into deterministic menu matching; legacy approvals without the marker continue through keyword/reply-text matching, so no schema migration is required.
+
 ## ADR-017 — Telegram retry policy differs for owner vs customer sends
 **Date:** 2026-08-21  
 **Status:** Accepted

@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.approvals.service import claim_for_send, create_approval
+from app.approvals.service import claim_for_send, create_approval, format_approval_reason
 from app.conversations.ingest import ingest_message
 from app.db.base import Base
 from app.db.models import Approval, Message
@@ -67,3 +67,24 @@ def test_approval_can_be_claimed_once() -> None:
     assert claim is not None
     assert claim.text == "candidate"
     assert claim_for_send(session, approval.id) is None
+
+
+def test_approval_preserves_intent_for_contextual_menu() -> None:
+    session = make_session()
+    result = ingest_message(session, owner_telegram_id=100, incoming=incoming(1))
+    approval = create_approval(
+        session,
+        conversation=result.conversation,
+        trigger_message_id=result.message.id,
+        candidate_response="candidate",
+        reason=format_approval_reason(
+            source="TEXT",
+            reason_code="SAFE_AUTO",
+            intent="payment_methods",
+        ),
+    )
+
+    claim = claim_for_send(session, approval.id)
+
+    assert claim is not None
+    assert claim.intent == "PAYMENT_METHODS"

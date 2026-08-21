@@ -64,7 +64,13 @@ Migrations المعروفة حاليًا:
 pytest
 ```
 
-آخر نتيجة موثقة على CI للفرع M6 الحالي:
+آخر نتيجة محلية موثقة بعد اختبار network fault injection:
+
+```text
+60 passed, 1 warning
+```
+
+آخر نتيجة موثقة على CI البعيد للفرع M6 الحالي قبل هذا diff:
 
 ```text
 56 passed, 1 warning
@@ -77,6 +83,14 @@ pytest
 ```powershell
 python -m compileall -q app tests
 ```
+
+لاختبار حد retry دون قطع شبكة حقيقية أو المخاطرة بتكرار رد عميل:
+
+```powershell
+pytest tests/test_resilient_bot.py
+```
+
+هذا الاختبار يحقن `TelegramNetworkError`: طلب المالك يعاد بعدد محدود مع backoff، أما طلب العميل غير المؤكد فيفشل مغلقًا دون retry.
 
 ## تشغيل البوت
 

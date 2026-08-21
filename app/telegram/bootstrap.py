@@ -13,6 +13,7 @@ from app.approvals.service import (
     attach_owner_message,
     claim_for_send,
     create_approval,
+    format_approval_reason,
     mark_sent,
     mark_uncertain,
     preview_claim,
@@ -295,6 +296,7 @@ async def approval_callbacks(callback: CallbackQuery, bot: Bot) -> None:
             business_connection_id=claim.business_connection_id,
             chat_id=claim.chat_id,
             text=claim.text,
+            intent=claim.intent,
         )
     except Exception:
         logger.exception("approval_send_uncertain approval=%s", approval_id)
@@ -450,7 +452,11 @@ async def _process_text_for_approval(
             conversation=conversation,
             trigger_message_id=trigger_message_id,
             candidate_response=result.candidate_reply,
-            reason=f"TEXT_{result.decision.reason_code}",
+            reason=format_approval_reason(
+                source="TEXT",
+                reason_code=result.decision.reason_code,
+                intent=result.decision.intent,
+            ),
             ttl_hours=settings.approval_ttl_hours,
         )
 
@@ -562,7 +568,11 @@ async def _process_photo_for_approval(
             conversation=conversation,
             trigger_message_id=trigger_message_id,
             candidate_response=result.candidate_reply,
-            reason=f"IMAGE_{result.decision.reason_code}",
+            reason=format_approval_reason(
+                source="IMAGE",
+                reason_code=result.decision.reason_code,
+                intent=result.decision.intent,
+            ),
             ttl_hours=settings.approval_ttl_hours,
         )
 

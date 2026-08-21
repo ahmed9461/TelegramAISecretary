@@ -113,6 +113,8 @@ Extractor ممنوع من اختراع/تصحيح/إكمال معلومات غا
 ### 🎯 CONTEXTUAL
 يحمل keywords و/أو intents في `visibility_rules_json`. قبل الإرسال يفحص النظام أحدث رسالة واردة ونص الرد، ويعرض الزر فقط إذا طابق السياق.
 
+في مسار الموافقة يحفظ النظام intent المصنف داخل metadata محدودة في حقل سبب approval الحالي، ثم يعيده إلى سياق القائمة عند الإرسال. approvals القديمة التي لا تحمل intent تستمر بالعمل عبر الكلمات دون migration جديد.
+
 مثال:
 
 ```text
@@ -138,7 +140,7 @@ keywords: دفع، سداد، تحويل، كريبتو، نجوم
 
 ## 13. Verification
 
-آخر CI موثق للفرع بعد contextual buttons/network retry:
+آخر CI بعيد موثق للفرع بعد contextual buttons/network retry:
 
 ```text
 Python 3.12: success
@@ -150,6 +152,24 @@ pytest: 56 passed, 1 warning
 
 الـRuff full report ما زال يعرض style debt قديمًا لأنه يعمل `--exit-zero`; correctness gate فقط هو blocking حاليًا.
 
+التحقق المحلي النهائي في 2026-08-22 بعد إضافة اختباري fault injection:
+
+```text
+pytest: 60 passed, 1 warning
+python -m compileall -q app tests: success
+Ruff E9/F63/F7/F82: success
+```
+
+الاختبار الحي عبر حسابين Telegram أثبت:
+
+- cancel للتغذية الجماعية لا يحفظ عناصر.
+- الاعتماد الصريح حفظ ثلاث معلومات PUBLIC واسترجعها الرد مع عرض المصادر.
+- الرد وصل مرة واحدة بكيانات rich أصلية دون raw Markdown/HTML.
+- الزر السياقي ظهر ونفذ الإجراء عند التطابق، ولم يظهر في السؤال غير المطابق.
+- زر ثانٍ يعتمد على `GREETING` intent فقط ظهر بعد approval ونفذ الإجراء، ما يثبت استمرار intent في المسار الحقيقي.
+- fault injection أعاد طلب المالك مرتين بحد أقصى وترك إرسال العميل غير المؤكد دون retry.
+- أزيلت بيانات الاختبار الاصطناعية المحددة بعد التحقق، بما فيها الزران المؤقتان، مع الحفاظ على البيانات السابقة.
+
 ## 14. حالة M6
 
-M6 ما زالت على `m6-secretary-learning` وPR #2 Draft حتى يكتمل الاختبار الحي النهائي. لا تعتبر merged أو production-stable قبل الدمج الفعلي إلى `main`.
+اكتمل gate التنفيذ والاختبار الحي محليًا على `m6-secretary-learning`. ما زال PR #2 Draft لأن آخر diff لم ينشر ولم يمر بعد على CI بعيد جديد ومراجعة. لا تعتبر M6 merged أو production-stable قبل الدمج الفعلي إلى `main`، ولا يبدأ M7 على هذا الفرع.
