@@ -13,7 +13,7 @@ def main_admin_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="🧩 الواجهة والأزرار", callback_data="a:interface"),
-            InlineKeyboardButton(text="⚙️ السلوك", callback_data="a:behavior"),
+            InlineKeyboardButton(text="⚙️ السلوك", callback_data="behavior:home"),
         ],
         [
             InlineKeyboardButton(text="⏰ الأوقات", callback_data="a:schedules"),
