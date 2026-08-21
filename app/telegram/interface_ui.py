@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 
 from app.config import get_settings
 from app.db.enums import ConversationState, InterfaceMode
-from app.db.models import Conversation, MenuItem
+from app.db.models import MenuItem
 from app.db.repositories import ConversationRepository, OwnerRepository
 from app.db.session import SessionLocal
 from app.interface.menus import MenuAction
@@ -209,7 +209,7 @@ async def _save_button(message: Message, state: FSMContext, *, payload: dict) ->
 
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        profile, rows = list_menu_items(session, owner_id=owner.id)
+        profile, _ = list_menu_items(session, owner_id=owner.id)
         active_count = int(
             session.scalar(
                 select(func.count(MenuItem.id)).where(MenuItem.menu_profile_id == profile.id)
