@@ -85,13 +85,18 @@ class DeepSeekAIProvider:
             if isinstance(state_raw, ConversationState)
             else ConversationState(str(state_raw))
         )
+        public_grounding = (
+            bool(context["has_public_grounding"])
+            if "has_public_grounding" in context
+            else None
+        )
         decision = choose_action(
             state=state,
             intent=str(raw.get("intent") or "UNKNOWN").upper(),
             risk=risk,
             confidence=confidence,
             has_grounding=bool(context.get("has_grounding", False)),
-            has_public_grounding=bool(context.get("has_public_grounding", False)),
+            has_public_grounding=public_grounding,
         )
         decision.needs_more_info = bool(raw.get("needs_more_info", False))
         return decision
