@@ -90,7 +90,7 @@ class AiogramTelegramAdapter:
         if not file.file_path:
             raise ValueError("Telegram returned no file_path")
         destination = BytesIO()
-        await self.bot.download_file(file_id=file_id, destination=destination)
+        await self.bot.download_file(file.file_path, destination=destination)
         data = destination.getvalue()
         if len(data) > max_bytes:
             raise ValueError(f"Telegram media exceeds configured limit ({max_bytes} bytes)")
