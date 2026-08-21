@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-secretary}
+      POSTGRES_USER: ${POSTGRES_USER:-secretary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - secretary_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-secretary} -d ${POSTGRES_DB:-secretary}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  secretary_pg:

@@ -1,0 +1,13 @@
+from enum import StrEnum
+
+
+class CoreIntent(StrEnum):
+    GREETING = "GREETING"
+    REQUEST_OWNER = "REQUEST_OWNER"
+    QUESTION = "QUESTION"
+    FOLLOW_UP = "FOLLOW_UP"
+    COMPLAINT = "COMPLAINT"
+    URGENT = "URGENT"
+    SENSITIVE_REQUEST = "SENSITIVE_REQUEST"
+    SPAM = "SPAM"
+    UNKNOWN = "UNKNOWN"
