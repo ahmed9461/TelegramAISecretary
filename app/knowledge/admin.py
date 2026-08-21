@@ -12,6 +12,8 @@ _VISIBILITY_ALIASES = {
     "عام": Visibility.PUBLIC.value,
     "internal": Visibility.INTERNAL.value,
     "داخلي": Visibility.INTERNAL.value,
+    "private": Visibility.PRIVATE.value,
+    "خاص": Visibility.PRIVATE.value,
 }
 
 
@@ -26,15 +28,20 @@ def add_knowledge(
     visibility: str,
     title: str,
     content: str,
+    item_type: str = "GENERAL",
+    tags: list[str] | None = None,
+    source: str = "OWNER_TELEGRAM",
 ) -> KnowledgeItem:
+    normalized_type = (item_type or "GENERAL").strip().upper()[:64]
     row = KnowledgeItem(
         owner_id=owner.id,
-        type="FACT",
+        type=normalized_type,
         title=title.strip(),
         content=content.strip(),
         visibility=visibility,
         status="ACTIVE",
-        source="OWNER_TELEGRAM",
+        tags_json=list(tags or []),
+        source=source,
     )
     session.add(row)
     session.flush()
