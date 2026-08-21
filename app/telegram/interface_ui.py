@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -25,10 +27,16 @@ guard = OwnerGuard(settings.owner_telegram_id)
 class InterfaceStates(StatesGroup):
     button_label = State()
     button_payload = State()
+    button_visibility = State()
 
 
 def _is_owner(user_id: int | None) -> bool:
     return guard.is_owner(user_id)
+
+
+def _is_contextual(row: MenuItem) -> bool:
+    rules = dict(row.visibility_rules_json or {})
+    return str(rules.get("mode") or "ALWAYS").upper() == "CONTEXTUAL"
 
 
 def _home_keyboard(profile_mode: str, rows: list[MenuItem]) -> InlineKeyboardMarkup:
@@ -61,10 +69,11 @@ def _home_keyboard(profile_mode: str, rows: list[MenuItem]) -> InlineKeyboardMar
             MenuAction.OPEN_URL.value: "🔗",
             MenuAction.HANDOFF.value: "👤",
         }.get(row.action_type, "🔘")
+        visibility = "🎯" if _is_contextual(row) else "🌐"
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    text=f"🗑 {icon} {row.emoji or ''} {row.label}".strip(),
+                    text=f"🗑 {visibility} {icon} {row.emoji or ''} {row.label}".strip(),
                     callback_data=f"interface:delete:{row.id}",
                 )
             ]
@@ -85,12 +94,16 @@ def _render_home(profile_mode: str, rows: list[MenuItem]) -> str:
         f"الوضع: {mode_label}",
         f"الأزرار الفعالة: {sum(1 for row in rows if row.enabled)}",
         "",
-        "في الوضع الهجين تظهر الأزرار أسفل ردود السكرتير داخل محادثة العميل، بينما يبقى الذكاء الاصطناعي حرًا في الرد.",
+        "🌐 الزر الدائم يظهر مع كل رد.",
+        "🎯 الزر السياقي يظهر فقط عندما تطابق رسالة العميل أو رد السكرتير الكلمات التي تحددها.",
     ]
     if rows:
         lines.append("\nالأزرار الحالية:")
         for row in rows[:12]:
-            lines.append(f"• {row.emoji or ''} {row.label} — {row.action_type}".strip())
+            visibility = "🎯 سياقي" if _is_contextual(row) else "🌐 دائم"
+            lines.append(
+                f"• {row.emoji or ''} {row.label} — {row.action_type} — {visibility}".strip()
+            )
     return "\n".join(lines)[:4000]
 
 
@@ -168,7 +181,8 @@ async def interface_label(message: Message, state: FSMContext) -> None:
     action = str(data.get("interface_action") or "")
     await state.update_data(interface_label=label[:128])
     if action == MenuAction.HANDOFF.value:
-        await _save_button(message, state, payload={})
+        await state.update_data(interface_payload={})
+        await _ask_visibility(message, state)
         return
     await state.set_state(InterfaceStates.button_payload)
     if action == MenuAction.OPEN_URL.value:
@@ -194,13 +208,62 @@ async def interface_payload(message: Message, state: FSMContext) -> None:
         payload = {"url": value}
     else:
         payload = {"text": value}
-    await _save_button(message, state, payload=payload)
+    await state.update_data(interface_payload=payload)
+    await _ask_visibility(message, state)
 
 
-async def _save_button(message: Message, state: FSMContext, *, payload: dict) -> None:
+async def _ask_visibility(message: Message, state: FSMContext) -> None:
+    await state.set_state(InterfaceStates.button_visibility)
+    await message.answer(
+        "🎯 متى يظهر هذا الزر؟\n\n"
+        "إذا تريده سياقيًا، اكتب الكلمات أو العبارات التي تدل على ظهوره مفصولة بفواصل.\n"
+        "مثال لزر طرق الدفع: دفع، سداد، تحويل، كريبتو، نجوم\n\n"
+        "أرسل — فقط إذا تريده زرًا دائمًا مع كل رد."
+    )
+
+
+def _split_keywords(raw: str) -> list[str]:
+    values = re.split(r"[,،|\n]+", raw)
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        item = value.strip()
+        key = item.casefold()
+        if not item or key in seen:
+            continue
+        seen.add(key)
+        result.append(item[:80])
+        if len(result) >= 24:
+            break
+    return result
+
+
+@router.message(InterfaceStates.button_visibility)
+async def interface_visibility(message: Message, state: FSMContext) -> None:
+    if not _is_owner(message.from_user.id if message.from_user else None):
+        return
+    raw = (message.text or "").strip()
+    if raw.casefold() in {"—", "-", "دائم", "always"}:
+        rules = {"mode": "ALWAYS"}
+    else:
+        keywords = _split_keywords(raw)
+        if not keywords:
+            await message.answer("اكتب كلمة واحدة على الأقل، أو أرسل — ليظهر الزر دائمًا.")
+            return
+        rules = {"mode": "CONTEXTUAL", "keywords": keywords}
+    await _save_button(message, state, visibility_rules=rules)
+
+
+async def _save_button(
+    message: Message,
+    state: FSMContext,
+    *,
+    visibility_rules: dict,
+) -> None:
     data = await state.get_data()
     action = str(data.get("interface_action") or MenuAction.SEND_MESSAGE.value)
     raw_label = str(data.get("interface_label") or "زر").strip()
+    payload = dict(data.get("interface_payload") or {})
     parts = raw_label.split(maxsplit=1)
     emoji = None
     label = raw_label
@@ -225,15 +288,18 @@ async def _save_button(message: Message, state: FSMContext, *, payload: dict) ->
             action_config_json=payload,
             row_index=active_count // 2,
             sort_order=active_count,
-            visibility_rules_json={},
+            visibility_rules_json=visibility_rules,
             enabled=True,
         )
         session.add(row)
         session.commit()
         item_id = row.id
     await state.clear()
+    visibility = (
+        "🎯 سياقي" if visibility_rules.get("mode") == "CONTEXTUAL" else "🌐 دائم"
+    )
     await message.answer(
-        f"✅ تم إنشاء الزر #{item_id}. سيظهر في محادثات العملاء عندما يكون وضع الواجهة هجين أو أزرار فقط.",
+        f"✅ تم إنشاء الزر #{item_id} — {visibility}.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="⬅️ الواجهة والأزرار", callback_data="interface:home")]
@@ -277,7 +343,6 @@ async def customer_menu_action(callback: CallbackQuery, bot: Bot) -> None:
         await safe_callback_answer(callback)
         return
 
-    # Acknowledge immediately. Business callback query IDs are short-lived.
     await safe_callback_answer(callback)
     business_connection_id = getattr(callback.message, "business_connection_id", None)
     chat = getattr(callback.message, "chat", None)
