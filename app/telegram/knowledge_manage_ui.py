@@ -11,6 +11,7 @@ from app.db.repositories import OwnerRepository
 from app.db.session import SessionLocal
 from app.knowledge.admin import list_knowledge
 from app.security.owner import OwnerGuard
+from app.telegram.callback_safety import safe_callback_answer
 
 router = Router(name="knowledge_manage_ui")
 settings = get_settings()
@@ -89,7 +90,7 @@ def _owned_item(session, item_id: int) -> KnowledgeItem | None:
 @router.callback_query(F.data == "brain:knowledge")
 async def knowledge_home(callback: CallbackQuery, state: FSMContext) -> None:
     if not _is_owner(callback.from_user.id):
-        await callback.answer()
+        await safe_callback_answer(callback)
         return
     await state.clear()
     with SessionLocal() as session:
@@ -99,46 +100,46 @@ async def knowledge_home(callback: CallbackQuery, state: FSMContext) -> None:
     text += "اختر معلومة لعرضها أو تعديلها." if rows else "لا توجد معلومات محفوظة بعد."
     if callback.message:
         await callback.message.edit_text(text, reply_markup=_list_keyboard(rows))
-    await callback.answer()
+    await safe_callback_answer(callback)
 
 
 @router.callback_query(F.data.startswith("knowledge:item:"))
 async def knowledge_item(callback: CallbackQuery, state: FSMContext) -> None:
     if not _is_owner(callback.from_user.id):
-        await callback.answer()
+        await safe_callback_answer(callback)
         return
     raw_id = (callback.data or "").rsplit(":", 1)[-1]
     if not raw_id.isdigit():
-        await callback.answer("معرّف غير صالح", show_alert=True)
+        await safe_callback_answer(callback, "معرّف غير صالح", show_alert=True)
         return
     item_id = int(raw_id)
     await state.clear()
     with SessionLocal() as session:
         row = _owned_item(session, item_id)
         if row is None:
-            await callback.answer("لم أجد المعلومة", show_alert=True)
+            await safe_callback_answer(callback, "لم أجد المعلومة", show_alert=True)
             return
         text = _render_item(row)
     if callback.message:
         await callback.message.edit_text(text[:4000], reply_markup=_item_keyboard(item_id))
-    await callback.answer()
+    await safe_callback_answer(callback)
 
 
 @router.callback_query(F.data.startswith("knowledge:title:"))
 async def knowledge_title_start(callback: CallbackQuery, state: FSMContext) -> None:
     if not _is_owner(callback.from_user.id):
-        await callback.answer()
+        await safe_callback_answer(callback)
         return
     raw_id = (callback.data or "").rsplit(":", 1)[-1]
     if not raw_id.isdigit():
-        await callback.answer("معرّف غير صالح", show_alert=True)
+        await safe_callback_answer(callback, "معرّف غير صالح", show_alert=True)
         return
     await state.clear()
     await state.update_data(knowledge_item_id=int(raw_id))
     await state.set_state(KnowledgeManageStates.title)
     if callback.message:
         await callback.message.answer("✏️ أرسل العنوان الجديد:")
-    await callback.answer()
+    await safe_callback_answer(callback)
 
 
 @router.message(KnowledgeManageStates.title)
@@ -173,18 +174,18 @@ async def knowledge_title_save(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("knowledge:content:"))
 async def knowledge_content_start(callback: CallbackQuery, state: FSMContext) -> None:
     if not _is_owner(callback.from_user.id):
-        await callback.answer()
+        await safe_callback_answer(callback)
         return
     raw_id = (callback.data or "").rsplit(":", 1)[-1]
     if not raw_id.isdigit():
-        await callback.answer("معرّف غير صالح", show_alert=True)
+        await safe_callback_answer(callback, "معرّف غير صالح", show_alert=True)
         return
     await state.clear()
     await state.update_data(knowledge_item_id=int(raw_id))
     await state.set_state(KnowledgeManageStates.content)
     if callback.message:
         await callback.message.answer("📝 أرسل المحتوى الجديد كاملًا:")
-    await callback.answer()
+    await safe_callback_answer(callback)
 
 
 @router.message(KnowledgeManageStates.content)
@@ -219,18 +220,18 @@ async def knowledge_content_save(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("knowledge:visibility:"))
 async def knowledge_visibility(callback: CallbackQuery) -> None:
     if not _is_owner(callback.from_user.id):
-        await callback.answer()
+        await safe_callback_answer(callback)
         return
     raw_id = (callback.data or "").rsplit(":", 1)[-1]
     if not raw_id.isdigit():
-        await callback.answer("معرّف غير صالح", show_alert=True)
+        await safe_callback_answer(callback, "معرّف غير صالح", show_alert=True)
         return
     item_id = int(raw_id)
     order = {"PUBLIC": "INTERNAL", "INTERNAL": "PRIVATE", "PRIVATE": "PUBLIC"}
     with SessionLocal() as session:
         row = _owned_item(session, item_id)
         if row is None:
-            await callback.answer("لم أجد المعلومة", show_alert=True)
+            await safe_callback_answer(callback, "لم أجد المعلومة", show_alert=True)
             return
         row.visibility = order.get(row.visibility, "INTERNAL")
         new_visibility = row.visibility
@@ -238,23 +239,23 @@ async def knowledge_visibility(callback: CallbackQuery) -> None:
         text = _render_item(row)
     if callback.message:
         await callback.message.edit_text(text[:4000], reply_markup=_item_keyboard(item_id))
-    await callback.answer(f"تم تغيير المستوى إلى {new_visibility}")
+    await safe_callback_answer(callback, f"تم تغيير المستوى إلى {new_visibility}")
 
 
 @router.callback_query(F.data.startswith("knowledge:delete:"))
 async def knowledge_delete(callback: CallbackQuery) -> None:
     if not _is_owner(callback.from_user.id):
-        await callback.answer()
+        await safe_callback_answer(callback)
         return
     raw_id = (callback.data or "").rsplit(":", 1)[-1]
     if not raw_id.isdigit():
-        await callback.answer("معرّف غير صالح", show_alert=True)
+        await safe_callback_answer(callback, "معرّف غير صالح", show_alert=True)
         return
     item_id = int(raw_id)
     with SessionLocal() as session:
         row = _owned_item(session, item_id)
         if row is None:
-            await callback.answer("لم أجد المعلومة", show_alert=True)
+            await safe_callback_answer(callback, "لم أجد المعلومة", show_alert=True)
             return
         row.status = "DELETED"
         session.commit()
@@ -267,4 +268,4 @@ async def knowledge_delete(callback: CallbackQuery) -> None:
                 ]
             ),
         )
-    await callback.answer("تم الحذف")
+    await safe_callback_answer(callback, "تم الحذف")
