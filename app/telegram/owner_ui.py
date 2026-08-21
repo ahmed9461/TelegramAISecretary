@@ -8,7 +8,7 @@ def main_admin_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🔔 بانتظارك", callback_data="a:pending"),
         ],
         [
-            InlineKeyboardButton(text="🧠 عقل السكرتير", callback_data="a:knowledge"),
+            InlineKeyboardButton(text="🧠 عقل السكرتير", callback_data="brain:home"),
             InlineKeyboardButton(text="👥 الأشخاص", callback_data="a:contacts"),
         ],
         [
