@@ -1,43 +1,55 @@
-# Telegram AI Secretary — M4 Hybrid Stability
+# Telegram AI Secretary
 
-A configurable personal AI secretary for Telegram Secretary/Business connections.
+سكرتير ذكاء اصطناعي شخصي عام وقابل للتخصيص لحساب Telegram عبر **Telegram Business / Connected Business Bot الرسمي**. المشروع مبني ليخدم أي نشاط أو استخدام يحدده المالك دون hardcoding لخدمات أو أسعار أو مجالات بعينها.
 
-M4 keeps our own architecture (PostgreSQL, dynamic menus/flows, Gemini vision + DeepSeek reasoning) and adopts proven design patterns from open-source Telegram Business assistants: connection recovery, approval-first drafts, draft expiry/supersession, message-history context, prompt-injection boundaries, edit/delete invalidation, and burst debouncing.
+## الحالة الحالية
 
-## What works in M4
+التطوير الحالي على **M6 — Secretary Learning, Bulk Knowledge & Contextual UI** في الفرع `m6-secretary-learning` وPR #2، وما زال تحت الاختبار الحي قبل الدمج إلى `main`.
 
-- Official Telegram Secretary/Business connection through Bot API + aiogram 3.
-- Recovery with `getBusinessConnection` when the original connection event was missed.
-- Owner-only control and approval cards.
-- Text: DeepSeek classification/reasoning -> owner approval -> send as your account.
-- Image: Gemini vision -> DeepSeek reasoning -> owner approval -> send as your account.
-- Retries for transient Gemini and DeepSeek `429/5xx` failures.
-- Per-chat debounce: bursts are coalesced and older AI work is cancelled.
-- Conversation revision guard: stale AI results cannot become valid drafts.
-- Draft lifecycle: PENDING / SUPERSEDED / STALE / EXPIRED / SENDING / SENT / REJECTED / UNCERTAIN.
-- Live Telegram permission check immediately before an approved send.
-- Approved outgoing replies are saved into the conversation history.
-- Manual owner replies are saved as context and invalidate pending drafts instead of triggering AI.
-- Edited/deleted Business messages invalidate stale drafts.
-- Recent-message context (default 12 messages).
-- Small knowledge-base retrieval from PostgreSQL; PRIVATE knowledge never reaches the model.
-- Prompt-injection trust boundary around contact-provided text.
-- Owner knowledge commands:
-  - `/learn عام | العنوان | المعلومة`
-  - `/learn داخلي | العنوان | المعلومة`
-  - `/knowledge`
-  - `/forgetknowledge ID`
-- Local archive search: `/search كلمة أو جملة`.
-- Dynamic menu/flow/custom-intent core from earlier milestones remains intact.
+آخر CI موثق للفرع:
 
-## Safe default
+```text
+Python 3.12: PASS
+Python 3.13: PASS
+Ruff correctness gate: PASS
+compileall: PASS
+pytest: 56 passed, 1 warning
+```
 
-M4 is still **approval-first**. AI can draft, but nothing is sent to the contact until the owner presses **✅ إرسال الرد**. This is intentional while live behavior is being validated.
+## ما يعمل الآن
 
-## Windows quick start
+- Telegram Business connection الرسمي عبر aiogram 3.
+- استقبال الرسائل وتخزين contacts/conversations/messages مع idempotency.
+- debounce وconversation revision لمنع الردود القديمة.
+- DeepSeek للنص/reasoning والرد النهائي.
+- Gemini Vision لتحليل الصور قبل DeepSeek.
+- Owner approval cards مع Send / Edit / Sources / Learn / Reject.
+- فحص `can_reply` قبل approved send وحماية من الإرسال المكرر/غير المؤكد.
+- BusinessProfile + Knowledge + ContactMemory + ResponsePolicy.
+- PUBLIC / INTERNAL / PRIVATE knowledge boundaries.
+- إدارة المعرفة والذاكرة والقواعد من Telegram.
+- Bulk Knowledge: لصق نص طويل أو TXT/MD/CSV/JSON/YAML ثم preview واعتماد جماعي.
+- Telegram native Rich Messages عبر MessageEntity، بدون raw HTML/Markdown من النموذج.
+- Dynamic Menu/Button Engine مع `AI_ONLY / CUSTOM_MENU / HYBRID`.
+- أزرار 🌐 دائمة و🎯 سياقية تظهر حسب موضوع الرسالة/الرد.
+- أزرار رد ثابت، URL، وHandoff للمتابعة البشرية.
+- retry محدود لرسائل الإدارة عند Telegram network errors، مع إبقاء customer sends fail-closed.
+
+## Quick Start — Windows
 
 ```powershell
-cd D:\Desktop\telegram_ai_secretary
+cd D:\Desktop\telegram_ai_secretary_clean
+.\.venv\Scripts\Activate.ps1
+
+docker compose up -d postgres
+alembic upgrade head
+pytest
+python -m app.telegram.run
+```
+
+إذا كانت البيئة غير موجودة بعد:
+
+```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -45,52 +57,41 @@ pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
 
-Fill `.env` with your Telegram, DeepSeek, and Gemini keys. PostgreSQL defaults to host port **5433** to avoid conflicts with a local PostgreSQL installation.
+املأ `.env` محليًا فقط. لا ترفع Tokens أو API keys إلى Git.
 
-```powershell
-docker compose up -d postgres
-docker compose ps
-python -m alembic upgrade head
-pytest
-python -m app.telegram.run
-```
-
-Expected test result for M4: **33 passed**.
-
-## Updating an existing M3 database
-
-Do **not** delete your Docker volume. Just apply the new migration:
-
-```powershell
-python -m alembic upgrade head
-```
-
-Migration `0002` adds approval lifecycle metadata and edited/deleted-message timestamps.
-
-## AI routing
+## AI Routing
 
 ```text
 Text:
-Telegram -> context + knowledge -> DeepSeek -> local safety policy -> owner approval -> reply
+Telegram → conversation/brain context → DeepSeek → local safety → approval/auto → reply
 
 Image:
-Telegram image -> Gemini vision -> DeepSeek -> local safety policy -> owner approval -> reply
+Telegram image → Gemini Vision → structured evidence → DeepSeek → local safety → approval/reply
 ```
 
-## Knowledge model
+## Knowledge Model
 
-M4 deliberately keeps PostgreSQL as the source of truth. For a small personal knowledge base, deterministic local retrieval is simpler and more stable than running a second vector database. The retrieval interface is isolated so embeddings/vector search can be plugged in later without changing the Telegram or AI layers.
+المعرفة هي مصدر حقائق النشاط، وليست معرفة النموذج العامة. `PUBLIC` يمكن قوله للعميل، `INTERNAL` يوجه السكرتير بدون كشف التعليمات الداخلية، و`PRIVATE` لا يدخل LLM أصلًا. ذاكرة الشخص منفصلة ولا تستخدم كإثبات لسعر أو توفر حالي.
 
-`PUBLIC` knowledge may be stated to contacts. `INTERNAL` knowledge may guide behavior but is labeled as internal and must not be disclosed. `PRIVATE` knowledge is excluded from retrieval sent to the LLM.
+## Documentation
 
-## Open-source design inspiration
+ابدأ من [`docs/README.md`](docs/README.md). أهم الملفات:
 
-See `docs/THIRD_PARTY_INSPIRATION.md`. M4 adapts architecture/safety patterns rather than replacing our project with another repository.
+- [`docs/MASTER_SPEC.md`](docs/MASTER_SPEC.md) — المرجع التأسيسي.
+- [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md) — ذاكرة المشروع الحالية.
+- [`docs/CONSTANTS.md`](docs/CONSTANTS.md) — الثوابت.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — المعمارية.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — القرارات.
+- [`docs/PROGRESS.md`](docs/PROGRESS.md) — التقدم.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — المراحل القادمة.
+- [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — التشغيل.
+- [`docs/SECURITY.md`](docs/SECURITY.md) — الأمان.
+- [`docs/AI_BEHAVIOR.md`](docs/AI_BEHAVIOR.md) — سلوك AI.
+- [`docs/KNOWLEDGE_AND_MEMORY.md`](docs/KNOWLEDGE_AND_MEMORY.md) — المعرفة والذاكرة.
+- [`docs/TELEGRAM_UI.md`](docs/TELEGRAM_UI.md) — Rich والأزرار.
+- [`docs/ACCEPTANCE_CRITERIA.md`](docs/ACCEPTANCE_CRITERIA.md) — معايير القبول.
+- [`docs/M6_SECRETARY_LEARNING.md`](docs/M6_SECRETARY_LEARNING.md) — تفاصيل M6.
 
-## Project docs
+## قاعدة المشروع
 
-- `docs/MASTER_SPEC.md`
-- `docs/DECISIONS.md`
-- `docs/PROGRESS.md`
-- `docs/RUNBOOK.md`
-- `docs/THIRD_PARTY_INSPIRATION.md`
+لا تعِد كتابة Core لنشاط جديد. إذا تغير النشاط أو الأسعار أو الخدمات أو طريقة العرض، عدّل البيانات/المعرفة/القواعد/القوائم. أي تغيير معماري جوهري يسجل في `docs/DECISIONS.md`.

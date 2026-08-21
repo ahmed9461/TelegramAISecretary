@@ -3,70 +3,114 @@
 ## ADR-001 — Telegram is an adapter
 **Status:** Accepted
 
-Core conversation, flow, knowledge, memory and decision logic must not import aiogram.
-Only `app/telegram/*` may depend on Telegram-specific types.
+Core conversation, knowledge, memory, flow and decision logic must not depend on aiogram types. Telegram-specific behavior stays under `app/telegram/*`.
 
 ## ADR-002 — No vertical lock-in
 **Status:** Accepted
 
-Project/service/subscription/support buttons are examples only. Menus, custom intents and flows are data-driven.
+The project is a generic secretary platform. Services, products, subscriptions, support categories, buttons, intents and flows are data-driven examples/presets, not hardcoded product logic.
 
 ## ADR-003 — Approval first
 **Status:** Accepted
 
-The first live mode is APPROVAL. Autonomous sending is enabled only after persistence, idempotency, state locking and evals are active.
+The safe development/live-testing default is approval-first. Autonomous sends expand only after persistence, idempotency, revision locking, permission checks and evals support them.
 
 ## ADR-004 — PostgreSQL production, SQLite developer fallback
 **Status:** Accepted
 
-Production configuration uses PostgreSQL. A zero-dependency SQLite URL remains available for local core tests and health checks.
+Production truth lives in PostgreSQL. SQLite may be used for low-friction local/core tests where PostgreSQL-specific behavior is not under test.
 
 ## ADR-005 — No AI before safety path
 **Status:** Accepted
 
-The Telegram handler may ingest Business messages in Phase 1 but must not autonomously answer until persistence + approval queue are active.
+Provider output never bypasses local policy. The AI classifies/drafts; deterministic local code decides whether a response may be sent, requires approval, escalates or stays silent.
 
-## ADR-004 — Gemini for vision, DeepSeek for reasoning/reply
-**Date:** 2026-08-21
+## ADR-006 — Gemini for vision, DeepSeek for reasoning/reply
+**Date:** 2026-08-21  
 **Status:** Accepted
 
-### Decision
-Use a provider split for image messages:
+Image path:
 
-1. Telegram downloads the image temporarily into memory.
-2. Gemini is the `VisionProvider` and returns structured, grounded visual evidence only.
-3. Image text is treated as untrusted content; instructions inside the image do not become system instructions.
-4. DeepSeek receives the user's text plus Gemini's structured observation and performs intent/risk analysis and reply drafting.
-5. The deterministic local policy still owns the final `AUTO / APPROVAL / ESCALATE / SILENT` gate.
-6. During the current milestone, **all image replies remain approval-only**, even if the local policy considers a case safe for auto reply.
+```text
+Telegram → Gemini Vision structured evidence → DeepSeek → local safety → approval/reply
+```
 
-### Why
-- Keeps multimodal perception separate from conversational reasoning.
-- DeepSeek does not need native image input for this workflow.
-- Vision provider can be replaced later without changing conversation/decision core.
-- Prevents visual prompt-injection text from being interpreted as trusted instructions.
-- Allows model routing and cost optimization independently per modality.
+Gemini does not own final reply/sending. Provider interfaces remain replaceable.
 
 ## ADR-007 — Hybridize by patterns, not by replacing the core
 **Date:** 2026-08-21  
 **Status:** Accepted
 
-### Decision
-Keep our PostgreSQL + aiogram + dynamic menus/flows + Gemini/DeepSeek architecture, while reimplementing proven safety/stability patterns found in MIT-licensed Telegram Business assistants.
-
-### Rationale
-- Avoid a rewrite into SQLite/MCP or a Hermes-specific plugin runtime.
-- Preserve the dynamic product design already specified for subscriptions, services, support, and personal use.
-- Reuse mature ideas where they solve known production failure modes: lost connection updates, stale approvals, burst messages, prompt injection, permission loss, and conversation context.
+Open-source projects may inspire safety/reliability patterns when license permits, but the project keeps its PostgreSQL + dynamic interface + provider abstraction architecture. Do not wholesale replace the core to gain one pattern.
 
 ## ADR-008 — Approval drafts are durable state with expiry and revision binding
 **Date:** 2026-08-21  
 **Status:** Accepted
 
-Every draft binds to a conversation revision and expiration time. A newer message/edit/delete or manual owner reply invalidates/supersedes old drafts. Sending always re-checks Telegram reply permission before the state transitions to SENDING.
+Every draft binds to a conversation revision and expiration time. New message/edit/delete/manual reply invalidates older drafts. Approved send rechecks Telegram rights before claiming/sending.
 
-## ADR-009 — PostgreSQL-first knowledge retrieval before vector infrastructure
+## ADR-009 — PostgreSQL-first retrieval before vector infrastructure
 **Date:** 2026-08-21  
 **Status:** Accepted
 
-For the current personal-scale knowledge base, use deterministic retrieval over active PostgreSQL knowledge items. PRIVATE rows never enter LLM context. Keep the retrieval interface replaceable so embeddings/vector search can be added once scale/quality measurements justify it.
+At personal-scale knowledge size, use deterministic PostgreSQL retrieval. Add embeddings/vector search only after evals demonstrate a real quality problem and the retrieval interface can be swapped cleanly.
+
+## ADR-010 — Business facts require owner-controlled grounding
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+DeepSeek general knowledge is not a source of truth for the owner's current prices, services, availability, deadlines, policies or commitments. Such facts require relevant owner-controlled knowledge; otherwise ask/route safely.
+
+## ADR-011 — Three knowledge visibility levels
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+`PUBLIC` may be stated to contacts. `INTERNAL` may guide behavior but must not be disclosed as hidden instructions. `PRIVATE` is Owner-only and excluded from LLM context.
+
+## ADR-012 — Contact memory is isolated context, not business truth
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+Each contact has separate memory. `private_notes` never reach the LLM. Memory can personalize replies but does not prove a current business price, availability, deadline or promise.
+
+## ADR-013 — No silent learning
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+Owner edits do not become durable knowledge automatically. Learning requires explicit confirmation. A learned edit is stored as INTERNAL guidance by default, not as PUBLIC factual knowledge.
+
+## ADR-014 — Bulk knowledge is review-before-commit
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+Large pasted/file sources may be extracted by AI into structured KnowledgeItems, but extraction is non-authoritative until the owner previews and approves the batch. Extractor must not infer, fix or fill absent facts.
+
+## ADR-015 — Native Telegram rich entities, not raw LLM markup
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+LLM response should be clean text. Telegram formatting is applied in the adapter through native `MessageEntity`; raw HTML/Markdown generated by the model is not the rendering contract.
+
+## ADR-016 — Contextual buttons are deterministic
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+Customer buttons may be ALWAYS or CONTEXTUAL. Contextual visibility is driven by stored rules such as keywords/intents and evaluated in local code. The LLM must not randomly choose which owner-created button appears.
+
+## ADR-017 — Telegram retry policy differs for owner vs customer sends
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+Transient network failures may be retried with bounded backoff for owner/admin Bot API messages such as approval cards. Customer Business sends are not blindly retried after an uncertain send because Telegram may have accepted the request before the connection failed, creating duplicate replies.
+
+## ADR-018 — Global behavior is a safety ceiling
+**Date:** 2026-08-21  
+**Status:** Accepted
+
+Global `AUTO / APPROVAL / OBSERVE / OFF` modifies allowed behavior but does not silently loosen stricter per-conversation states such as HUMAN_TAKEOVER, PAUSED or EXCLUDED.
+
+## ADR-019 — Repository documentation is part of the product
+**Date:** 2026-08-22  
+**Status:** Accepted
+
+Project continuity must not depend on chat history. `PROJECT_MEMORY.md`, `CONSTANTS.md`, `PROGRESS.md`, `RUNBOOK.md`, milestone docs and specialized references are maintained with the code. Major changes are incomplete until the relevant documentation is updated.

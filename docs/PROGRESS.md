@@ -1,114 +1,174 @@
 # Progress
 
-## 2026-08-21 — Milestone M0/M1 started
+## M0/M1 — Foundation
 
 ### Implemented
-- Project package and Python configuration.
-- FastAPI health/ready endpoints.
-- SQLAlchemy data model for owners, Business Connections, contacts, conversations, messages, knowledge, menus, custom intents, flows, flow sessions, approvals and audits.
-- Alembic baseline.
-- Owner-only authorization primitive.
-- Conversation state machine and effective-state resolver.
-- Dynamic Menu/Button model with AI_ONLY/CUSTOM_MENU/HYBRID support.
-- Generic Flow Engine with version-aware definition model.
-- Core + Custom Intent primitives.
-- Safe deterministic AI decision policy skeleton.
-- Knowledge visibility primitive.
-- Long-term memory safety primitive.
-- Telegram MessagingAdapter contract.
-- aiogram Business Connection / Business Message event bootstrap.
-- aiogram outbound send using `business_connection_id`.
-- Owner administration main keyboard.
-- Unit/integration core test suite.
 
-### Intentionally not enabled yet
-- Autonomous AI replies.
-- Live OpenAI provider.
-- Persistence of Business events from aiogram handlers.
-- Approval-send callback transaction.
-- Rich Message renderer.
-- Media download/transcription.
+- Python project/configuration + FastAPI health/readiness.
+- SQLAlchemy models and Alembic baseline.
+- owners, Business Connections, contacts, conversations, messages, knowledge, menus, intents, flows, approvals and audit primitives.
+- Owner-only authorization.
+- conversation state machine.
+- Dynamic Menu/Button primitives with `AI_ONLY / CUSTOM_MENU / HYBRID`.
+- Flow Engine primitives.
+- deterministic AI decision policy skeleton.
+- Telegram adapter contract + aiogram Business events.
+- persistence/idempotency for Business messages.
+- approval revision binding and one-shot claiming.
+- CI for Python 3.12/3.13.
 
-Reason: autonomous sending is blocked until persistence + idempotency + approval queue are wired end-to-end.
+## M2 — Gemini Vision + DeepSeek
 
-## 2026-08-21 — Persistence/approval safety gate
+### Implemented
 
-### Added
-- Idempotent Business-message ingestion into Contact/Conversation/Message records.
-- Business Connection upsert persistence.
-- Conversation revision increments on new context.
-- Approval candidates snapshot the conversation revision.
-- Stale approvals are rejected after new incoming context.
-- Approval claiming is one-shot (`PENDING -> SENDING`).
-- Uncertain-send state is available; unsafe blind retries are avoided.
-- aiogram handler now persists Business events but still does not autonomously reply.
-
-## 2026-08-21 — Foundation verification
-
-- Core tests: 18/18 passed locally.
-- `compileall`: passed.
-- Alembic `upgrade head`: passed against a fresh SQLite verification database.
-- Schema verification: 15 tables including `alembic_version` created.
-- GitHub Actions CI added for Python 3.12/3.13 with Ruff + compile + pytest.
-- systemd service templates added for API and polling bot.
-
-## 2026-08-21 — Milestone M2: Gemini Vision + DeepSeek reasoning
-
-### Added
 - `VisionProvider` abstraction.
-- `GeminiVisionProvider` using Gemini structured image understanding.
-- Default Gemini model configuration: `gemini-3.7-flash` (configurable).
-- `DeepSeekAIProvider` using `/chat/completions`.
-- Default DeepSeek model configuration: `deepseek-v4-flash` (configurable).
-- DeepSeek classification output is filtered through the existing deterministic local safety policy.
-- `MultimodalPipeline`: Gemini image evidence -> DeepSeek classification/reply.
-- Image prompt-injection boundary: instructions visible inside an image are treated as untrusted content.
-- Telegram photo download with configurable maximum size.
-- End-to-end photo approval path for Telegram Business messages.
-- Owner approval buttons: Send / Reject.
-- One-shot approval sending and uncertain-send handling reused for image replies.
-- Gemini/DeepSeek secrets and model settings added to `.env.example`.
+- Gemini image understanding with structured observation.
+- `AIProvider` / DeepSeek reasoning and reply drafting.
+- image → Gemini → DeepSeek → local policy → approval.
+- image prompt-injection boundary.
+- Telegram photo download with size limit.
+- owner Send/Reject approval flow.
+- failure-safe behavior when providers fail.
 
-### Safety status
-- Image replies are **approval-only** in this milestone.
-- Text autonomous AI replies remain disabled pending live Telegram verification.
-- If Gemini or DeepSeek fails, no reply is sent to the contact; the owner is notified instead.
+## M3 — Text AI & Provider Reliability
 
-### Verification
-- `compileall`: passed.
-- Test suite: 22/22 passed.
-- Provider tests use mocked HTTP transports; no real API keys are required for CI.
-- Ruff CLI was not installed in the local execution environment, so local Ruff execution could not be repeated here; CI configuration still includes Ruff installation/checking.
+### Implemented
 
-## 2026-08-21 — Milestone M4: hybrid stability pass
+- text → DeepSeek → local policy → approval path.
+- provider configuration isolated from secrets.
+- retry/fallback improvements for AI providers.
+- test settings isolation to avoid accidental `.env` dependence in unit tests.
 
-### Open-source-informed stability improvements
-- Reviewed `telegram-business-bridge`, `hermes-telegram-business`, and `rag-telegram-bot` (MIT projects) and reimplemented selected patterns in our architecture.
-- Recover missing Telegram Business connection state through `getBusinessConnection` on first incoming message.
-- Verify the live Telegram connection and `can_reply` right immediately before approved sends.
-- Reject connections belonging to a Telegram user other than the configured owner.
-- Per-chat debounce for burst messages; newer work cancels older pending AI work.
-- Conversation-revision validation before a generated AI result can become an approval draft.
-- New approvals supersede older pending approvals in the same conversation.
-- Approval TTL defaults to 24 hours and expired drafts fail closed.
-- Owner approval cards are updated to Sent / Rejected / Stale / Uncertain states.
-- Approved outgoing replies are persisted to history for future context.
-- Manual owner replies are stored as owner context and invalidate stale AI drafts rather than causing an AI feedback loop.
-- Edited/deleted Business messages update archive metadata and invalidate pending drafts.
-- Recent message history is fed to the AI with untrusted-content boundaries.
-- DeepSeek transient failures now retry with exponential backoff.
-- PostgreSQL knowledge retrieval feeds PUBLIC/INTERNAL knowledge into the model while excluding PRIVATE knowledge.
-- Owner can add/list/delete knowledge from Telegram commands.
-- Owner can search archived messages with `/search`.
-- PostgreSQL Docker binding moved to localhost port 5433 by default to reduce local conflicts.
-- Windows installs `psycopg-binary` automatically; base dependency remains portable `psycopg` for Termux/Linux.
+## M4 — Hybrid Stability
 
-### Database
-- Added Alembic migration `0002_stability`.
-- Approval rows now store owner approval-card IDs, send message ID, expiry timestamp.
-- Message rows now store edit/delete timestamps.
+### Implemented
 
-### Verification
-- `python -m compileall app`: passed.
-- Test suite: **33/33 passed**.
-- Tests now cover draft supersession, expiry, outgoing-history persistence, PRIVATE knowledge exclusion, prompt-injection marker integrity, transient DeepSeek retry, archive search, and debounce cancellation.
+- recover missing Business Connection through `getBusinessConnection`.
+- verify live `can_reply` immediately before approved sends.
+- reject unexpected owner connections.
+- per-chat debounce.
+- conversation revision validation before candidate creation.
+- approval supersession and TTL.
+- approval card status updates.
+- approved/manual outgoing messages stored in history.
+- edit/delete Business messages invalidate stale drafts.
+- recent conversation context with untrusted markers.
+- DeepSeek transient retry.
+- Gemini retry/fallback.
+- PostgreSQL knowledge retrieval; PRIVATE excluded.
+- owner knowledge commands and message archive search.
+- Docker PostgreSQL binding on localhost:5433.
+- migration `0002_stability`.
+
+### Verification at milestone close
+
+```text
+33/33 tests passed
+compileall passed
+```
+
+## M5 — Secretary Brain Foundation
+
+### Implemented
+
+- `BusinessProfile` with configurable identity/activity/style/instructions.
+- `ContactMemory` isolated per Contact.
+- `ResponsePolicy` data-driven owner rules.
+- migration `0003_secretary_brain`.
+- `🧠 عقل السكرتير` admin UI.
+- profile + memory + response policies merged into AI context.
+- public-grounding rule for business facts.
+- knowledge source visibility preserved.
+- owner-side management for the brain foundation.
+
+### Live result
+
+M5 was tested live through Telegram Business and accepted for merge into `main` before M6 began.
+
+## M6 — Secretary Learning, Bulk Knowledge & Contextual UI
+
+**Status: in live validation on `m6-secretary-learning`; PR #2 remains Draft.**
+
+### Approval & learning
+
+- edit candidate reply before send.
+- show retrieved knowledge sources.
+- explicit `learn from my edit` confirmation.
+- learned edit stored INTERNAL only; no silent PUBLIC fact creation.
+
+### Memory & policy operations
+
+- list contacts with memories.
+- review/edit memory summary.
+- owner-only private notes.
+- enable/disable AI sharing per contact.
+- clear memory.
+- knowledge item view/edit/delete/change visibility.
+- response policy view/edit/enable/disable/delete.
+- global `AUTO / APPROVAL / OBSERVE / OFF` UI with safety ceiling semantics.
+
+### Bulk Knowledge
+
+- `📥 تغذية العقل` UI.
+- paste large text or upload TXT/MD/CSV/JSON/YAML/YML.
+- DeepSeek extraction into GENERAL/SERVICE/PRODUCT/PRICE/FAQ/POLICY/CUSTOM.
+- chunking for large sources.
+- normalize/deduplicate results.
+- preview before save.
+- save all only after explicit owner approval.
+- extractor forbidden from inventing/correcting/completing absent facts.
+
+### Telegram Rich UI
+
+- native Telegram rich renderer using MessageEntity.
+- no raw HTML/Markdown required from LLM.
+- dynamic menu actually attached to Business replies through Telegram adapter.
+- URL buttons rendered as URL buttons.
+- admin UI for button creation.
+
+### Contextual Buttons
+
+- buttons can be 🌐 ALWAYS or 🎯 CONTEXTUAL.
+- contextual visibility uses configured keywords and/or intents.
+- matching examines current user/reply context deterministically.
+- payment buttons can appear for payment context and stay hidden for unrelated questions.
+
+### Reliability fixes discovered in live testing
+
+- safe handling for expired callback query (`query is too old`).
+- live Windows test exposed `WinError 64` after DeepSeek returned HTTP 200 while sending owner approval card.
+- added `ResilientOwnerBot` with limited retry for owner/admin Bot API requests only.
+- customer sends remain fail-closed and are not blindly retried to prevent duplicates.
+
+### Latest verified CI
+
+Commit/PR CI on 2026-08-21:
+
+```text
+Python 3.12: PASS
+Python 3.13: PASS
+Ruff correctness gate: PASS
+compileall: PASS
+pytest: 56 passed, 1 warning
+```
+
+The remaining warning is the Starlette TestClient/httpx deprecation warning. Full Ruff report still shows pre-existing formatting/style debt because that step is informational (`--exit-zero`); the blocking correctness gate passes.
+
+## Documentation hardening — 2026-08-22
+
+Documentation is being promoted to a first-class project artifact. Added/updated:
+
+- project memory.
+- constants/invariants.
+- architecture.
+- roadmap.
+- data model.
+- security model.
+- AI behavior.
+- knowledge/memory guide.
+- Telegram UI guide.
+- acceptance criteria.
+- M6 milestone document.
+- current runbook and README.
+
+Goal: the repository itself must be sufficient context for a new developer/AI without relying on the chat history as the only project memory.
