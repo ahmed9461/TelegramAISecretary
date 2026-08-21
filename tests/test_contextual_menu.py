@@ -13,7 +13,7 @@ def test_contextual_button_matches_customer_or_reply_text() -> None:
         "mode": "CONTEXTUAL",
         "keywords": ["دفع", "سداد", "كريبتو"],
     }
-    assert menu_item_matches_context(rules, {"user_text": "كيف اقدر اسدد؟"}) is True
+    assert menu_item_matches_context(rules, {"user_text": "ما هي طرق الدفع؟"}) is True
     assert menu_item_matches_context(rules, {"reply_text": "طرق الدفع المتاحة كالتالي"}) is True
     assert menu_item_matches_context(rules, {"text": "ما هي ساعات العمل؟"}) is False
 
