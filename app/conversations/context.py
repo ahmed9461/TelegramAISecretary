@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.brain.service import build_brain_context
+from app.db.enums import Visibility
 from app.db.models import Conversation, Message
 from app.knowledge.retrieval import KnowledgeHit, retrieve_knowledge
 from app.security.untrusted import wrap_untrusted
@@ -66,6 +68,12 @@ def build_ai_context(
         for hit in hits
     ]
     confidence = hits[0].score if hits else 0.0
+    has_public_grounding = any(hit.visibility == Visibility.PUBLIC.value for hit in hits)
+    brain_context = build_brain_context(
+        session,
+        owner_id=conversation.owner_id,
+        contact_id=conversation.contact_id,
+    )
 
     return BuiltContext(
         payload={
@@ -74,7 +82,9 @@ def build_ai_context(
             "recent_messages": recent_messages,
             "trusted_knowledge": trusted_knowledge,
             "has_grounding": bool(hits),
+            "has_public_grounding": has_public_grounding,
             "retrieval_confidence": min(1.0, confidence),
+            **brain_context,
         },
         knowledge_hits=tuple(hits),
     )
