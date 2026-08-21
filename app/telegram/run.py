@@ -1,7 +1,5 @@
 import asyncio
 
-from aiogram import Bot
-
 from app.config import get_settings
 from app.observability.logging import configure_logging
 from app.telegram.approval_edit_ui import router as approval_edit_router
@@ -13,6 +11,7 @@ from app.telegram.interface_ui import router as interface_router
 from app.telegram.knowledge_manage_ui import router as knowledge_manage_router
 from app.telegram.memory_ui import router as memory_router
 from app.telegram.policy_manage_ui import router as policy_manage_router
+from app.telegram.resilient_bot import ResilientOwnerBot
 
 
 async def main() -> None:
@@ -20,7 +19,10 @@ async def main() -> None:
     configure_logging(settings.log_level)
     if not settings.telegram_configured:
         raise RuntimeError("TELEGRAM_BOT_TOKEN and OWNER_TELEGRAM_ID are required")
-    bot = Bot(settings.telegram_bot_token)
+    bot = ResilientOwnerBot(
+        settings.telegram_bot_token,
+        owner_chat_id=settings.owner_telegram_id,
+    )
     dp = build_dispatcher()
     # Specialized M6 routers are registered before the generic brain router so they can
     # provide richer management screens for callbacks that existed as simple M5 placeholders.
