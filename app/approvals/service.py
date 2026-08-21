@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.db.models import Approval, Conversation
 from app.db.repositories import ApprovalRepository, ConversationRepository
 
+_INTENT_MARKER = "|INTENT="
+
 
 @dataclass(frozen=True, slots=True)
 class ApprovalClaim:
@@ -13,6 +15,22 @@ class ApprovalClaim:
     chat_id: int
     business_connection_id: str
     text: str
+    intent: str = ""
+
+
+def format_approval_reason(*, source: str, reason_code: str, intent: str) -> str:
+    """Keep the classified intent with the approval without changing the M6 schema."""
+    base = f"{source.strip().upper()}_{reason_code.strip().upper()}"
+    normalized_intent = intent.strip().upper().replace("|", " ")[:64].strip()
+    if not normalized_intent:
+        return base[:255]
+    suffix = f"{_INTENT_MARKER}{normalized_intent}"
+    return f"{base[: 255 - len(suffix)]}{suffix}"
+
+
+def approval_intent(reason: str) -> str:
+    _, marker, intent = reason.rpartition(_INTENT_MARKER)
+    return intent.strip().upper() if marker else ""
 
 
 def create_approval(
@@ -53,7 +71,6 @@ def attach_owner_message(
     return ok
 
 
-
 def preview_claim(session: Session, approval_id: int) -> ApprovalClaim | None:
     approval = session.get(Approval, approval_id)
     if approval is None or approval.status != "PENDING":
@@ -67,6 +84,7 @@ def preview_claim(session: Session, approval_id: int) -> ApprovalClaim | None:
         chat_id=conversation.telegram_chat_id,
         business_connection_id=conversation.business_connection_id,
         text=approval.candidate_response,
+        intent=approval_intent(approval.reason),
     )
 
 
@@ -86,6 +104,7 @@ def claim_for_send(session: Session, approval_id: int) -> ApprovalClaim | None:
         chat_id=conversation.telegram_chat_id,
         business_connection_id=conversation.business_connection_id,
         text=approval.candidate_response,
+        intent=approval_intent(approval.reason),
     )
     session.commit()
     return claim

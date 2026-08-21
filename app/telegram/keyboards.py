@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.interface.menus import MenuDefinition
+from app.interface.menus import MenuAction, MenuDefinition
 
 
 def to_aiogram_inline_keyboard(menu: MenuDefinition):
@@ -9,13 +9,20 @@ def to_aiogram_inline_keyboard(menu: MenuDefinition):
 
     keyboard: list[list[InlineKeyboardButton]] = []
     for row in menu.visible_rows():
-        keyboard.append(
-            [
+        rendered_row: list[InlineKeyboardButton] = []
+        for button in row:
+            text = f"{button.emoji + ' ' if button.emoji else ''}{button.label}"
+            if button.action == MenuAction.OPEN_URL:
+                url = str(button.config.get("url") or "").strip()
+                if url.startswith(("https://", "http://")):
+                    rendered_row.append(InlineKeyboardButton(text=text, url=url))
+                continue
+            rendered_row.append(
                 InlineKeyboardButton(
-                    text=f"{button.emoji + ' ' if getattr(button, 'emoji', None) else ''}{button.label}",
+                    text=text,
                     callback_data=f"m:{button.id}",
                 )
-                for button in row
-            ]
-        )
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+            )
+        if rendered_row:
+            keyboard.append(rendered_row)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard) if keyboard else None

@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.brain.service import build_brain_context
-from app.db.enums import Visibility
-from app.db.models import Conversation, Message
+from app.db.enums import ConversationState, GlobalMode, Visibility
+from app.db.models import Conversation, Message, Owner
 from app.knowledge.retrieval import KnowledgeHit, retrieve_knowledge
 from app.security.untrusted import wrap_untrusted
 
@@ -16,6 +16,24 @@ from app.security.untrusted import wrap_untrusted
 class BuiltContext:
     payload: dict
     knowledge_hits: tuple[KnowledgeHit, ...]
+
+
+def effective_state_for_global_mode(*, conversation_state: str, global_mode: str) -> str:
+    """Apply the owner's global mode as a safety ceiling.
+
+    Global APPROVAL can make an AI_AUTO conversation stricter, but AUTO never loosens an
+    explicitly stricter per-conversation state. OBSERVE and OFF always suppress AI replies.
+    """
+    if global_mode == GlobalMode.OFF.value:
+        return ConversationState.PAUSED.value
+    if global_mode == GlobalMode.OBSERVE.value:
+        return ConversationState.OBSERVE_ONLY.value
+    if (
+        global_mode == GlobalMode.APPROVAL.value
+        and conversation_state == ConversationState.AI_AUTO.value
+    ):
+        return ConversationState.AI_APPROVAL.value
+    return conversation_state
 
 
 def build_ai_context(
@@ -29,6 +47,12 @@ def build_ai_context(
     conversation = session.get(Conversation, conversation_id)
     if conversation is None:
         raise ValueError("conversation not found")
+    owner = session.get(Owner, conversation.owner_id)
+    global_mode = owner.default_mode if owner else GlobalMode.APPROVAL.value
+    effective_state = effective_state_for_global_mode(
+        conversation_state=conversation.state,
+        global_mode=global_mode,
+    )
 
     rows = list(
         session.scalars(
@@ -77,7 +101,9 @@ def build_ai_context(
 
     return BuiltContext(
         payload={
-            "state": conversation.state,
+            "state": effective_state,
+            "conversation_state": conversation.state,
+            "global_mode": global_mode,
             "conversation_summary": conversation.summary,
             "recent_messages": recent_messages,
             "trusted_knowledge": trusted_knowledge,
