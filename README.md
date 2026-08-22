@@ -4,17 +4,19 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M8 — Memory Intelligence & Feedback** في الفرع `codex/m8-memory-intelligence`. اندمج M7 في `main` عبر PR #3، واجتازت M8 بوابتها المحلية وTelegram الحية وCI على Python 3.12/3.13؛ دمج PR #4 قيد الإغلاق.
+التطوير الحالي على **M9 — Production Operations** في الفرع `codex/m9-production-operations`. اندمج M8 في `main` عبر PR #4 بالـSHA `00cbf898`، واجتازت M9 بوابتها المحلية والتشغيلية وTelegram الحية؛ PR/CI والدمج قيد الإغلاق.
 
-آخر gate محلي موثق لـM8:
+آخر gate محلي كامل بعد توثيق M9:
 
 ```text
 retrieval evaluation: 14/14 top-1
-Ruff correctness gate: PASS
+Ruff full gate: PASS
 compileall: PASS
-pytest: 83 passed, 1 warning
-PostgreSQL head: 0006
+pytest: 92 passed, 1 warning
+PostgreSQL head: 0007
 isolated migration rehearsal: PASS
+Docker build/non-root smoke: PASS
+backup/restore rehearsal: PASS
 ```
 
 ## ما يعمل الآن
@@ -43,6 +45,11 @@ isolated migration rehearsal: PASS
 - اقتراح ذاكرة من المحادثة لا يُحفظ قبل اعتماد المالك، مع provenance/confidence/retention.
 - تنقية محلية للأسرار والبيانات الحساسة، وتحرير/تصدير/مسح ذاكرة من Telegram.
 - تقييمات 1–5 بتكرار قابل للضبط ولوحة رضا للمالك، دون تعلم تلقائي.
+- health/readiness حقيقيان، metrics محمية، structured JSON logs وtrace IDs.
+- AiRun وaudit metadata منقاة للأداء والقرارات دون نسخ نص المحادثة.
+- Docker/systemd production packaging مع migration gate ومستخدم غير جذر.
+- PostgreSQL backup/checksum/retention وrestore rehearsal معزولة.
+- production preflight وتدوير PostgreSQL/metrics secrets دون عرضها.
 
 ## Quick Start — Windows
 
@@ -102,6 +109,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - [`docs/M6_SECRETARY_LEARNING.md`](docs/M6_SECRETARY_LEARNING.md) — تفاصيل M6.
 - [`docs/M7_RETRIEVAL_QUALITY.md`](docs/M7_RETRIEVAL_QUALITY.md) — تفاصيل M7.
 - [`docs/M8_MEMORY_INTELLIGENCE.md`](docs/M8_MEMORY_INTELLIGENCE.md) — تفاصيل M8.
+- [`docs/M9_PRODUCTION_OPERATIONS.md`](docs/M9_PRODUCTION_OPERATIONS.md) — تفاصيل وإغلاق M9.
 
 ## قاعدة المشروع
 

@@ -342,6 +342,35 @@ class Feedback(Base):
     )
 
 
+class AiRun(Base):
+    __tablename__ = "ai_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(
+        ForeignKey("owners.id", ondelete="CASCADE"), index=True
+    )
+    conversation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    trigger_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+    )
+    trace_id: Mapped[str] = mapped_column(String(64), index=True)
+    operation: Mapped[str] = mapped_column(String(64), index=True)
+    provider: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128))
+    intent: Mapped[str] = mapped_column(String(64), default="")
+    risk: Mapped[str] = mapped_column(String(32), default="")
+    action: Mapped[str] = mapped_column(String(64), default="")
+    confidence_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    knowledge_refs_json: Mapped[list] = mapped_column(JSON, default=list)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    token_usage_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    error_code: Mapped[str] = mapped_column(String(128), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 

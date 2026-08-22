@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from app.ai.provider import AIProvider
 from app.ai.schemas import Decision
 from app.db.enums import DecisionAction
+from app.security.untrusted import wrap_untrusted
 from app.vision.provider import VisionProvider
 from app.vision.schemas import VisionObservation
-from app.security.untrusted import wrap_untrusted
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +15,7 @@ class MultimodalResult:
     vision: VisionObservation
     decision: Decision
     candidate_reply: str
+    token_usage: dict[str, int]
 
 
 class MultimodalPipeline:
@@ -46,8 +47,7 @@ class MultimodalPipeline:
             values = vision_payload.get(key)
             if isinstance(values, list):
                 vision_payload[key] = [
-                    wrap_untrusted(value) if isinstance(value, str) else value
-                    for value in values
+                    wrap_untrusted(value) if isinstance(value, str) else value for value in values
                 ]
         enriched_context["vision"] = vision_payload
         # The image itself can ground visual claims. It does not automatically ground
@@ -63,4 +63,17 @@ class MultimodalPipeline:
                 context=enriched_context,
                 decision=decision,
             )
-        return MultimodalResult(vision=observation, decision=decision, candidate_reply=candidate)
+        usage: dict[str, int] = {}
+        for provider in (self.vision, self.ai):
+            provider_usage = getattr(provider, "token_usage", {})
+            if not isinstance(provider_usage, dict):
+                continue
+            for key, value in provider_usage.items():
+                if isinstance(value, int | float):
+                    usage[key] = usage.get(key, 0) + int(value)
+        return MultimodalResult(
+            vision=observation,
+            decision=decision,
+            candidate_reply=candidate,
+            token_usage=usage,
+        )

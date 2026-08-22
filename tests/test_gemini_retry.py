@@ -24,10 +24,14 @@ async def test_gemini_retries_503_then_succeeds() -> None:
             "detected_language": "en",
             "confidence": 0.9,
         }
-        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(observation)}]}}]})
+        return httpx.Response(
+            200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(observation)}]}}]}
+        )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    provider = GeminiVisionProvider(api_key="gm", client=client, max_retries=1, retry_base_seconds=0)
+    provider = GeminiVisionProvider(
+        api_key="gm", client=client, max_retries=1, retry_base_seconds=0
+    )
     result = await provider.analyze_image(image_bytes=b"abc", mime_type="image/jpeg")
     await client.aclose()
     assert calls == 2
@@ -51,7 +55,9 @@ async def test_gemini_falls_back_after_transient_failures() -> None:
             "detected_language": "unknown",
             "confidence": 0.8,
         }
-        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(observation)}]}}]})
+        return httpx.Response(
+            200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(observation)}]}}]}
+        )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     provider = GeminiVisionProvider(

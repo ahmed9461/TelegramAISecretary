@@ -236,7 +236,7 @@ pytest: PASS
 
 ## M8 — Memory Intelligence & Feedback
 
-**Status: التنفيذ والبوابة المحلية والحية وCI مكتملة على `codex/m8-memory-intelligence`؛ دمج PR #4 قيد الإغلاق.**
+**Status: مكتمل ومندمج في `main` عبر PR #4.**
 
 ### Implemented
 
@@ -283,7 +283,53 @@ compileall: PASS
 pytest: PASS
 ```
 
-لا تسجل M8 مندمجة حتى يكتمل دمج PR #4.
+اكتمل CI النهائي ثم اندمج PR #4 في `main` بالـSHA `00cbf89841444c322af18fcc8b143fec83a17596`.
+
+## M9 — Production Operations
+
+**Status: التنفيذ والبوابة المحلية والتشغيلية الحية مكتملان على `codex/m9-production-operations`؛ PR/CI والدمج قيد الإغلاق.**
+
+### Implemented
+
+- `AiRun` عند migration `0007`: trace/operation/provider/model/intent/risk/action/confidence، زمن، token usage، knowledge refs وحالة الخطأ دون نسخ نص الرسالة.
+- تجميع Prometheus للرسائل والموافقات وAI latency/errors/tokens وretrieval hits والتقييمات ضمن نافذة قابلة للضبط.
+- `/health` خفيف للـliveness، و`/ready` يتحقق من الاتصال ورأس Alembic وإعداد Telegram/AI، و`/metrics` يدعم Bearer token بمقارنة ثابتة الزمن.
+- JSON logging مع trace IDs وتنقية محلية للتوكنات وكلمات المرور والمفاتيح والأسرار.
+- audit trail للردود المرسلة/المرفوضة وحذف المعرفة/السياسات/الأزرار ومسح الذاكرة والتراجع عن الدفعات، دون metadata حرة حساسة.
+- Dockerfile يعمل بمستخدم غير جذر، وCompose ثابت الاسم مع postgres/migrate/api/bot وhealth checks وربط localhost فقط.
+- systemd units محصنة لـmigration/api/bot وbackup timer يومي.
+- backup custom-format مع checksum/manifest/retention، وبروفة restore في قاعدة عشوائية محددة الاسم تُحذف في `finally`.
+- production preflight حي لـDB revision وTelegram وDeepSeek وGemini، وتدوير ذري لأسرار PostgreSQL وmetrics.
+- جعل إصدار التطبيق من `app.__version__` وربطه ديناميكيًا بالحزمة لمنع اختلاف إصدار المصدر وmetadata المحلية.
+- سداد ملاحظات Ruff التاريخية المتبقية وتحويل CI من correctness subset + تقرير غير حاجب إلى بوابة Ruff كاملة تشمل app/tests/scripts/migrations.
+
+### Automated/local operations gate — 2026-08-22
+
+```text
+pytest full suite after final documentation: 92 passed, 1 known warning
+M9 focused suite after readiness/rotation metrics hardening: 9 passed
+compileall: PASS
+Ruff full repository gate: PASS
+PostgreSQL head: 0007
+Alembic check: PASS
+isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
+docker compose config: PASS
+Docker image build: PASS
+Docker non-root health/readiness smoke: PASS
+```
+
+التحذير الوحيد المعروف هو Starlette TestClient/httpx، ولا يمثل فشلًا تشغيليًا.
+
+### Live operations + Telegram gate — 2026-08-22
+
+- رُحلت قاعدة المشروع additive من `0006` إلى `0007`، وظلت Owner والمعرفة الفعالة دون تغيير.
+- صورة الإنتاج 0.9.0 عملت بالمستخدم `secretary`; liveness نجح، وreadiness فشل مغلقًا بـ503 عند قاعدة smoke غير مرحّلة.
+- API الحية على قاعدة المشروع: health=200، ready=200، metrics غير المفوضة=401، metrics المفوضة=200 مع trace ID.
+- production preflight حي: Telegram/DeepSeek/Gemini جميعها HTTP 200، والقاعدة عند رأس المصدر.
+- نسخة PostgreSQL حقيقية استعيدت في قاعدة `secretary_restore_*`: revision `0007` وcounts owners/conversations/messages صحيحة، ثم حُذفت قاعدة البروفة.
+- دُوّر سر PostgreSQL وmetrics token محليًا؛ أعيد تشغيل البوت واستمر poller واحد بلا conflict أو خطأ قاعدة بيانات.
+- رسالة Business اصطناعية أنشأت AiRun `SUCCESS` وقياسات latency/tokens، وأظهرت بطاقة موافقة عربية مهنية واقتراحًا متعلقًا بالنشاط دون العبارة الممنوعة.
+- رفض البطاقة أنشأ audit `PROPOSED_RESPONSE_REJECTED`. بعد التحقق أزيلت فقط AiRun/approval/audit/message الاصطناعية وأعيد conversation revision؛ بقيت 37 رسالة وKnowledgeItem حقيقية فعالة واحدة، والذاكرة/feedback الاصطناعيان صفرًا.
 
 ## Documentation hardening — 2026-08-22
 

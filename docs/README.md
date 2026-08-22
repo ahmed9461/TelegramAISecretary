@@ -23,7 +23,8 @@
 17. `M6_SECRETARY_LEARNING.md` — تفاصيل وإغلاق M6.
 18. `M7_RETRIEVAL_QUALITY.md` — تفاصيل وإغلاق M7.
 19. `M8_MEMORY_INTELLIGENCE.md` — تفاصيل M8 والبوابة الحية.
-20. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
+20. `M9_PRODUCTION_OPERATIONS.md` — التشغيل والمراقبة والنشر والنسخ الاحتياطي وبوابة M9.
+21. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
 
 ## قاعدة التحديث
 

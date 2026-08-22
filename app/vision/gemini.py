@@ -8,22 +8,27 @@ import httpx
 
 from app.vision.schemas import VisionObservation
 
-
 VISION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "summary": {
             "type": "string",
-            "description": "Concise factual description of the image relevant to the user's message.",
+            "description": (
+                "Concise factual description of the image relevant to the user's message."
+            ),
         },
         "extracted_text": {
             "type": "string",
-            "description": "Readable text transcribed from the image. Empty string if none is readable.",
+            "description": (
+                "Readable text transcribed from the image. Empty string if none is readable."
+            ),
         },
         "visible_elements": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Important visible objects, UI elements, people, documents, labels, or scenes.",
+            "description": (
+                "Important visible objects, UI elements, people, documents, labels, or scenes."
+            ),
         },
         "relevant_details": {
             "type": "array",
@@ -33,7 +38,9 @@ VISION_SCHEMA: dict[str, Any] = {
         "uncertainty": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Anything unclear, unreadable, occluded, or unsafe to infer from the image.",
+            "description": (
+                "Anything unclear, unreadable, occluded, or unsafe to infer from the image."
+            ),
         },
         "detected_language": {
             "type": "string",
@@ -81,6 +88,7 @@ class GeminiVisionProvider:
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
         self._client = client
+        self.token_usage: dict[str, int] = {}
 
     async def analyze_image(
         self,
@@ -129,11 +137,25 @@ class GeminiVisionProvider:
         response = await self._post_with_retry_and_fallback(headers=headers, payload=payload)
         response.raise_for_status()
         data = response.json()
+        self._capture_usage(data.get("usageMetadata"))
         text = self._extract_text(data)
         try:
             return VisionObservation.model_validate(json.loads(text))
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("Gemini returned an invalid structured vision response") from exc
+
+    def _capture_usage(self, raw_usage: object) -> None:
+        if not isinstance(raw_usage, dict):
+            return
+        mapping = {
+            "promptTokenCount": "prompt_tokens",
+            "candidatesTokenCount": "completion_tokens",
+            "totalTokenCount": "total_tokens",
+        }
+        for source, target in mapping.items():
+            value = raw_usage.get(source)
+            if isinstance(value, int | float):
+                self.token_usage[target] = int(value)
 
     async def _post_with_retry_and_fallback(
         self, *, headers: dict[str, str], payload: dict[str, Any]
@@ -172,7 +194,7 @@ class GeminiVisionProvider:
         if not candidates:
             feedback = data.get("promptFeedback") or {}
             raise ValueError(f"Gemini returned no candidates: {feedback}")
-        parts = (((candidates[0] or {}).get("content") or {}).get("parts") or [])
+        parts = ((candidates[0] or {}).get("content") or {}).get("parts") or []
         text_parts = [part.get("text", "") for part in parts if isinstance(part, dict)]
         text = "".join(text_parts).strip()
         if not text:

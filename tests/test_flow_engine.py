@@ -9,7 +9,9 @@ def subscription_flow() -> FlowDefinition:
         version=1,
         entry_key="plan",
         steps={
-            "plan": FlowStepDef("plan", StepType.ASK_CHOICE, "اختر الباقة", "email", ("شهر", "سنة")),
+            "plan": FlowStepDef(
+                "plan", StepType.ASK_CHOICE, "اختر الباقة", "email", ("شهر", "سنة")
+            ),
             "email": FlowStepDef("email", StepType.ASK_TEXT, "أرسل البريد", "done"),
             "done": FlowStepDef("done", StepType.COMPLETE),
         },

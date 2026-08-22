@@ -33,7 +33,14 @@ async def test_deepseek_classification_is_filtered_by_local_policy() -> None:
             content = "السعر الظاهر في الصورة هو 10 دولارات."
         return httpx.Response(
             200,
-            json={"choices": [{"message": {"content": content}}]},
+            json={
+                "choices": [{"message": {"content": content}}],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            },
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -58,3 +65,8 @@ async def test_deepseek_classification_is_filtered_by_local_policy() -> None:
     )
     await client.aclose()
     assert "10" in reply
+    assert provider.token_usage == {
+        "prompt_tokens": 20,
+        "completion_tokens": 10,
+        "total_tokens": 30,
+    }

@@ -69,6 +69,13 @@
 - لا تحذف Docker volume أثناء تحديث عادي.
 - الأسرار في `.env` أو secret store فقط؛ `.env` وأي backups/keys لا تدخل Git.
 - `.env.example` يحتوي placeholders فقط.
+- `/health` هو liveness فقط؛ `/ready` هو بوابة الاعتماد على DB/Alembic/الإعدادات ولا يعيد نجاحًا عند عدم الجاهزية.
+- metrics التشغيلية aggregate بلا نصوص رسائل، وتكون محمية بـ`METRICS_TOKEN` في الإنتاج.
+- AiRun/audit/logs لا تنسخ prompt أو نص المحادثة أو secrets أو private notes.
+- السجلات الإنتاجية JSON وتطبق redaction قبل الكتابة؛ trace IDs ليست معرفات مستخدمين.
+- النسخة الاحتياطية لا تعتبر صالحة حتى تنجح بروفة استعادة معزولة؛ قاعدة البروفة وحدها تحذف بعد الاختبار.
+- تشغيل Docker للتطبيق يكون بمستخدم غير جذر، وربط PostgreSQL وAPI الخارجي يبقى على loopback ما لم يوجد proxy/firewall موثق.
+- قيم `change-me` أو metrics token الفارغ غير مقبولة في production preflight.
 
 ## الإعدادات الافتراضية الحالية
 
@@ -82,5 +89,8 @@
 - Memory suggestion TTL: 72 ساعة
 - Feedback buttons: مفعلة، وتظهر افتراضيًا كل 3 ردود معتمدة في المحادثة
 - PostgreSQL local host port في Docker: 5433 → container 5432
+- Metrics window: 30 يومًا
+- Backup retention: 30 يومًا
+- Structured log format: JSON
 
 هذه القيم الافتراضية قابلة للضبط من الإعدادات، لكن تغيير معناها أو إزالة آلية الحماية المرتبطة بها يحتاج مراجعة قرار معماري.

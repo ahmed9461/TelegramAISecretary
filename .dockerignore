@@ -1,0 +1,17 @@
+.env
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+*.sqlite3
+*.db
+*.log
+.pytest_cache
+.ruff_cache
+.mypy_cache
+work
+backups
+htmlcov
+dist
+build

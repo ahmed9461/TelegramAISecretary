@@ -2,7 +2,6 @@ from app.ai.policy import choose_action
 from app.ai.schemas import Confidence
 from app.db.enums import ConversationState, DecisionAction, RiskLevel
 
-
 HIGH_CONF = Confidence(intent=0.95, retrieval=0.95, answer=0.95, policy=0.95)
 
 

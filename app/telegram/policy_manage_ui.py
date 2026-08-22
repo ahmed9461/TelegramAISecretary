@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from app.audit.service import write_audit_log
 from app.brain.models import ResponsePolicy
 from app.brain.service import list_response_policies
 from app.config import get_settings
@@ -269,6 +270,14 @@ async def policy_delete(callback: CallbackQuery) -> None:
         if row is None:
             await callback.answer("لم أجد القاعدة", show_alert=True)
             return
+        write_audit_log(
+            session,
+            owner_id=row.owner_id,
+            actor="OWNER_TELEGRAM",
+            action="RESPONSE_POLICY_DELETE",
+            entity_type="RESPONSE_POLICY",
+            entity_id=row.id,
+        )
         session.delete(row)
         session.commit()
     if callback.message:

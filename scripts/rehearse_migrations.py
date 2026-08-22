@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
@@ -40,6 +41,7 @@ def main() -> None:
         os.environ["DATABASE_URL"] = rehearsal_url.render_as_string(hide_password=False)
         get_settings.cache_clear()
         alembic_config = Config("alembic.ini")
+        expected_revision = ScriptDirectory.from_config(alembic_config).get_current_head()
         command.upgrade(alembic_config, "head")
         command.downgrade(alembic_config, "base")
         command.upgrade(alembic_config, "head")
@@ -47,7 +49,7 @@ def main() -> None:
         rehearsal_engine = create_engine(rehearsal_url)
         with rehearsal_engine.connect() as connection:
             revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
-        if revision != "0006":
+        if revision != expected_revision:
             raise RuntimeError(f"Unexpected final migration revision: {revision!r}")
         print(f"Migration rehearsal passed at revision {revision}.")
     finally:

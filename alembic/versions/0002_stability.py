@@ -11,8 +11,9 @@ idempotent at the column level so both upgrade paths are safe:
 - fresh M4 database: 0001 creates current metadata, 0002 detects the columns and no-ops.
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0002"
 down_revision = "0001"
@@ -40,7 +41,9 @@ def upgrade() -> None:
     _add_if_missing("messages", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
     _add_if_missing("approvals", sa.Column("owner_chat_id", sa.BigInteger(), nullable=True))
     _add_if_missing("approvals", sa.Column("owner_message_id", sa.BigInteger(), nullable=True))
-    _add_if_missing("approvals", sa.Column("sent_telegram_message_id", sa.BigInteger(), nullable=True))
+    _add_if_missing(
+        "approvals", sa.Column("sent_telegram_message_id", sa.BigInteger(), nullable=True)
+    )
     _add_if_missing("approvals", sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True))
 
 

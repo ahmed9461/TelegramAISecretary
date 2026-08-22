@@ -11,7 +11,10 @@ class FakeCallback:
     async def answer(self, text=None, show_alert=False):
         raise TelegramBadRequest(
             method=None,
-            message="Bad Request: query is too old and response timeout expired or query ID is invalid",
+            message=(
+                "Bad Request: query is too old and response timeout expired "
+                "or query ID is invalid"
+            ),
         )
 
 

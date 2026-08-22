@@ -15,6 +15,17 @@
 - `.env.example` placeholders فقط.
 - Settings fields الحساسة لا تظهر في repr حيث طبق ذلك.
 - عند تسريب secret إلى commit يجب تدويره؛ حذف الملف من working tree وحده لا يكفي.
+- production preflight يرفض password الافتراضي وmetrics token المفقود.
+- `scripts.rotate_internal_secrets` يولد PostgreSQL password وmetrics token جديدين، يغير دور PostgreSQL ثم يستبدل `.env` ذريًا ويتحقق من الاتصال دون طباعتهما.
+- Telegram/DeepSeek/Gemini keys تدور من لوحة المزود، ثم تحدث `.env` محليًا وتعاد الخدمات؛ لا تحفظ القيمة القديمة في backup نصي.
+
+## Operational telemetry
+
+- Structured logging ينقي authorization/token/password/secret/API key patterns قبل الإخراج.
+- AiRun وPrometheus لا ينسخان محتوى الرسائل أو prompts أو private notes.
+- metrics تستخدم Bearer token في production، وتربط API افتراضيًا على loopback.
+- AuditLog metadata تمر عبر allow-by-type/block-by-key ولا تخزن المحتوى الحر الحساس.
+- backup files مستبعدة من Git، وتحتاج صلاحيات خاصة ونقلًا مشفرًا عند خروجها من الجهاز.
 
 ## Knowledge confidentiality
 

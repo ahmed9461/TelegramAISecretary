@@ -11,5 +11,7 @@ def test_multimodal_requires_both_provider_keys() -> None:
     )
     assert configured.multimodal_configured is True
 
-    missing = Settings(_env_file=None, ai_provider="deepseek", deepseek_api_key="ds", vision_provider="gemini")
+    missing = Settings(
+        _env_file=None, ai_provider="deepseek", deepseek_api_key="ds", vision_provider="gemini"
+    )
     assert missing.multimodal_configured is False

@@ -158,3 +158,21 @@ Every approved summary/fact/preference records provenance and confidence. Retent
 **Status:** Accepted
 
 Ratings bind to one approval and may be submitted only by its recipient. Prompt frequency and enablement are settings. Feedback can be summarized for the owner but cannot silently change memory, knowledge, policy or prompts.
+
+## ADR-027 — Operational telemetry is metadata, not a conversation replica
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Each AI operation may persist trace, provider/model, policy decision, bounded confidence, knowledge IDs, latency, token usage and status. `ai_runs`, metrics and audit metadata must not duplicate message bodies, prompts, secrets or private notes. Logs apply deterministic credential redaction before output.
+
+## ADR-028 — Liveness, readiness and metrics have separate contracts
+**Date:** 2026-08-22
+**Status:** Accepted
+
+`/health` only proves that the API process can respond. `/ready` fails closed unless the database is reachable at the source Alembic head and required Telegram/AI configuration is present. `/metrics` exposes aggregate non-PII operational values and requires a Bearer token whenever `METRICS_TOKEN` is configured; production preflight requires that token.
+
+## ADR-029 — Backups are incomplete until restore is rehearsed
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Production PostgreSQL backups use custom format, checksum manifests, restricted permissions and bounded retention. A release gate must restore a backup into a uniquely named isolated database, verify Alembic revision and representative counts, then drop only that temporary database. Normal updates never delete the primary volume.

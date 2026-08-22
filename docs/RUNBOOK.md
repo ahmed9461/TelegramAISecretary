@@ -1,4 +1,4 @@
-# Runbook — Current M8
+# Runbook — Current M9
 
 ## المتطلبات
 
@@ -59,6 +59,7 @@ Migrations المعروفة حاليًا:
 0004_m7_knowledge_operations
 0005_m7_approval_provenance
 0006_m8_memory_intelligence
+0007_m9_production_observability
 ```
 
 ## الاختبارات
@@ -67,10 +68,10 @@ Migrations المعروفة حاليًا:
 pytest
 ```
 
-آخر نتيجة محلية موثقة لـM8:
+آخر نتيجة محلية كاملة بعد توثيق M9:
 
 ```text
-83 passed, 1 warning
+92 passed, 1 warning
 ```
 
 التحذير الحالي StarletteDeprecationWarning متعلق بـFastAPI TestClient/httpx ولا يمنع نجاح suite.
@@ -89,7 +90,7 @@ python scripts/evaluate_retrieval.py
 
 النتيجة الحالية: `14/14 top-1`.
 
-تمت بروفة M8 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند `0006`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
+تمت بروفة M9 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند رأس المصدر `0007`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تقرأ الرأس ديناميكيًا، تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
 
 لاختبار حد retry دون قطع شبكة حقيقية أو المخاطرة بتكرار رد عميل:
 
@@ -107,18 +108,18 @@ python -m app.telegram.run
 
 بعد التشغيل من حساب المالك أرسل `/start` عند الحاجة لفتح لوحة الإدارة.
 
-## تحديث النسخة المحلية من فرع M8
+## تحديث النسخة المحلية من فرع M9
 
 ```powershell
 cd D:\Desktop\telegram_ai_secretary_clean
-git switch codex/m8-memory-intelligence
+git switch codex/m9-production-operations
 git pull
 .\.venv\Scripts\Activate.ps1
 pytest
 python -m app.telegram.run
 ```
 
-يجب أن يعرض `alembic current` الرأس `0006` قبل تشغيل كود M8.
+يجب أن يعرض `alembic current` الرأس `0007` قبل تشغيل كود M9.
 
 ## اختبار حي أساسي
 
@@ -178,7 +179,128 @@ TXT, MD, CSV, JSON, YAML, YML
 
 AUTO لا يلغي HUMAN_TAKEOVER أو EXCLUDED أو PAUSED.
 
+## API التشغيلية والمراقبة
+
+تشغيل API محليًا:
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+- `GET /health`: liveness خفيف ويعرض status/version/environment فقط.
+- `GET /ready`: يعيد 200 فقط إذا DB متاحة عند رأس Alembic وكانت إعدادات Telegram/AI المطلوبة موجودة؛ وإلا 503 مع checks غير حساسة.
+- `GET /metrics`: Prometheus text. إذا كان `METRICS_TOKEN` مضبوطًا، أرسل `Authorization: Bearer <token>`؛ عدم التفويض يعيد 401.
+
+في production يجب توليد token طويل وعدم تعريض المنفذ مباشرة للإنترنت. اربط loopback وضع reverse proxy/TLS وACL مناسبين أمامه عند الحاجة.
+
+## Docker production layout
+
+تحقق من الملف وابن الصورة ثم شغل الخدمات:
+
+```powershell
+docker compose config -q
+docker compose build api
+docker compose up -d postgres
+docker compose up -d migrate
+docker compose up -d api bot
+docker compose ps
+```
+
+الاسم الثابت للمشروع `telegram_ai_secretary`. `migrate` يجب أن ينتهي بصفر قبل api/bot. التطبيق داخل الصورة يعمل بالمستخدم غير الجذر `secretary`. المنافذ الافتراضية مربوطة بـ`127.0.0.1`.
+
+لا تشغل bot من Compose وبالتوازي مع `python -m app.telegram.run` أو systemd؛ poller واحد فقط مسموح لكل token.
+
+## Ubuntu + systemd
+
+المسار المعتمد `/opt/telegram-ai-secretary` والمستخدم `secretary`. ثبّت المشروع والبيئة و`.env` بصلاحية `0600`، وأنشئ `/opt/telegram-ai-secretary/work` و`/var/backups/telegram-ai-secretary` مملوكين للمستخدم. أداة backup الحالية تستخدم Docker Compose، لذلك يحتاج المستخدم صلاحية محدودة ومراجعة للوصول إلى Docker socket (عضوية `docker` تعادل عمليًا صلاحية root؛ استخدم root-run oneshot أو socket policy أضيق إذا كانت سياسة الخادم تمنعها). ثم:
+
+```bash
+sudo cp deploy/systemd/telegram-ai-secretary-*.service /etc/systemd/system/
+sudo cp deploy/systemd/telegram-ai-secretary-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now telegram-ai-secretary-api.service
+sudo systemctl enable --now telegram-ai-secretary-bot.service
+sudo systemctl enable --now telegram-ai-secretary-backup.timer
+```
+
+عند إصدار جديد:
+
+```bash
+sudo systemctl stop telegram-ai-secretary-bot.service telegram-ai-secretary-api.service
+sudo systemctl restart telegram-ai-secretary-migrate.service
+sudo systemctl start telegram-ai-secretary-api.service telegram-ai-secretary-bot.service
+curl --fail http://127.0.0.1:8000/health
+curl --fail http://127.0.0.1:8000/ready
+```
+
+لا تبدأ الخدمات إذا فشلت migration أو readiness. الوحدات تطبق `NoNewPrivileges`, filesystem/kernel hardening وcapability drop.
+
+## Production preflight
+
+```powershell
+python -m scripts.production_preflight --live
+```
+
+يشترط `APP_ENV=production` وloopback binding ورأس Alembic الصحيح وإعداد Telegram/DeepSeek وmetrics token قوي وPostgreSQL password غير افتراضي. `--live` يتحقق من Telegram وDeepSeek وGemini دون إرسال رسالة أو طباعة المفاتيح. استخدم `--allow-development` فقط لبروفة الجهاز المحلي، ولا تعتبرها إثبات نشر production.
+
+## PostgreSQL backup وrestore rehearsal
+
+أنشئ نسخة custom-format مع checksum manifest وretention:
+
+```powershell
+python -m scripts.backup_postgres --output-dir backups --retention-days 30
+```
+
+اختبر أحدث ملف محدد في قاعدة عشوائية معزولة:
+
+```powershell
+python -m scripts.rehearse_postgres_restore backups\secretary-<timestamp>-<id>.dump
+```
+
+تنجح البروفة فقط إذا تطابق Alembic مع رأس المصدر وقرئت counts أساسية. تحذف الأداة قاعدة `secretary_restore_*` المحددة في `finally` ولا تمس قاعدة الحقيقة.
+
+لاستعادة فعلية بعد حادثة:
+
+1. أوقف api/bot وخذ نسخة من الحالة الحالية إن أمكن.
+2. تحقق من checksum في manifest ومن أن ملف النسخة مخزن بصلاحيات خاصة.
+3. أنشئ قاعدة بديلة جديدة؛ لا تستعد فوق قاعدة الحقيقة أولًا.
+4. نفذ `pg_restore --exit-on-error --no-owner --no-privileges` إلى القاعدة البديلة.
+5. تحقق من `alembic_version`, counts, readiness واختبار Telegram محدود.
+6. غير `DATABASE_URL` للقاعدة المستعادة ثم أعد الخدمات. احتفظ بالقاعدة القديمة كrollback حتى اكتمال القبول.
+
+## Secret rotation
+
+للأسرار الداخلية المحلية، بعد backup وإيقاف api/bot:
+
+```powershell
+python -m scripts.rotate_internal_secrets --apply
+```
+
+الأداة تدور PostgreSQL password و`METRICS_TOKEN`، تستبدل `.env` ذريًا وتتحقق من الاتصال دون طباعة القيم. أعد postgres/app containers أو systemd services ثم شغل preflight وreadiness. لا تشغل الأداة على ملف env مشترك دون نافذة صيانة.
+
+لـTelegram/DeepSeek/Gemini: أنشئ المفتاح الجديد من لوحة المزود، حدّث `.env` بصلاحيات خاصة، أعد الخدمات واختبر، ثم ألغ المفتاح السابق. لا تسجل القيم في terminal history أو issue/PR/log.
+
 ## Failure Behavior
+
+### `/ready` يعيد 503
+
+اقرأ `checks`: إذا `database=false` افحص اتصال PostgreSQL و`alembic current` مقابل `alembic heads`. إذا Telegram/AI false افحص وجود الإعداد فقط دون طباعته. لا تغير endpoint ليعيد 200 لتجاوز المنصة.
+
+### `/metrics` يعيد 401
+
+تأكد أن الخدمة والمراقب يقرآن `METRICS_TOKEN` نفسه، وأن header يبدأ `Bearer `. دوّر token إذا ظهر في log أو shell history.
+
+### duplicate Telegram polling
+
+أوقف جميع المشغلات ثم اختر واحدًا فقط: local process أو Compose bot أو systemd bot. تحقق من process tree/container/service قبل البدء؛ لا تنشئ session أو token جديدًا لحل التعارض.
+
+### migration service fails
+
+اترك api/bot متوقفين، افحص الخطأ ونسخة backup ورأس المصدر. أعد بروفة migration على قاعدة مؤقتة. لا تنفذ downgrade على القاعدة الحية تلقائيًا.
+
+### backup/restore rehearsal fails
+
+لا تحذف آخر نسخة ناجحة. افحص صحة PostgreSQL container والمساحة وchecksum وإصدار أدوات PostgreSQL. قاعدة البروفة ذات prefix المحدد يمكن حذفها بعد التحقق أنها ليست قاعدة الحقيقة؛ الأداة تفعل ذلك تلقائيًا.
 
 ### DeepSeek/Gemini 429/5xx/network
 provider retries محدودة مع backoff. عند الفشل النهائي لا يرسل رد مختلق.

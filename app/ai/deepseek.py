@@ -40,6 +40,7 @@ class DeepSeekAIProvider:
         self.max_retries = max(0, max_retries)
         self.retry_base_seconds = max(0.0, retry_base_seconds)
         self._client = client
+        self.token_usage: dict[str, int] = {}
 
     async def classify_and_decide(self, *, text: str, context: dict) -> Decision:
         system = (
@@ -247,6 +248,7 @@ class DeepSeekAIProvider:
                     continue
                 response.raise_for_status()
                 body = response.json()
+                self._merge_usage(body.get("usage"))
                 choices = body.get("choices") or []
                 if not choices:
                     raise ValueError("DeepSeek returned no choices")
@@ -266,6 +268,14 @@ class DeepSeekAIProvider:
 
         assert last_error is not None
         raise last_error
+
+    def _merge_usage(self, raw_usage: object) -> None:
+        if not isinstance(raw_usage, dict):
+            return
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            value = raw_usage.get(key)
+            if isinstance(value, int | float):
+                self.token_usage[key] = self.token_usage.get(key, 0) + int(value)
 
     @staticmethod
     def _safe_context(context: dict) -> dict:

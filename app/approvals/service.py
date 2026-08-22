@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.audit.service import write_audit_log
 from app.db.models import Approval, Conversation
 from app.db.repositories import ApprovalRepository, ConversationRepository
 
@@ -131,6 +132,16 @@ def mark_sent(
             telegram_message_id=telegram_message_id,
             text=approval.candidate_response,
         )
+    if conversation is not None:
+        write_audit_log(
+            session,
+            owner_id=conversation.owner_id,
+            actor="OWNER_TELEGRAM",
+            action="APPROVED_RESPONSE_SENT",
+            entity_type="APPROVAL",
+            entity_id=approval.id,
+            metadata={"telegram_message_id": telegram_message_id},
+        )
     session.commit()
 
 
@@ -140,6 +151,19 @@ def mark_uncertain(session: Session, approval_id: int) -> None:
 
 
 def reject(session: Session, approval_id: int) -> bool:
+    approval = session.get(Approval, approval_id)
+    conversation = (
+        session.get(Conversation, approval.conversation_id) if approval is not None else None
+    )
     rejected = ApprovalRepository.reject(session, approval_id)
+    if rejected and conversation is not None:
+        write_audit_log(
+            session,
+            owner_id=conversation.owner_id,
+            actor="OWNER_TELEGRAM",
+            action="PROPOSED_RESPONSE_REJECTED",
+            entity_type="APPROVAL",
+            entity_id=approval_id,
+        )
     session.commit()
     return rejected

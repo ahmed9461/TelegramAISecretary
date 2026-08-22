@@ -147,4 +147,22 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] Telegram live gate نجحت، ثم نُظفت البيانات الاصطناعية فقط.
 - [x] محليًا: 83 passed، compileall وRuff correctness و14/14 retrieval regression.
 - [x] CI Python 3.12/3.13 في run `32541333524`.
-- [ ] دمج PR #4.
+- [x] دمج PR #4 بالـSHA `00cbf89841444c322af18fcc8b143fec83a17596`.
+
+## M9 — Production Operations
+
+- [x] `/health` liveness لا يخفي فشل dependencies داخل نتيجة نجاح زائفة للجاهزية.
+- [x] `/ready` يتحقق من DB ورأس Alembic وإعداد Telegram/AI ويعيد 503 عند الفشل.
+- [x] `/metrics` محمي بـBearer عند ضبط token ولا يعرض نصوص رسائل أو PII.
+- [x] AiRun يسجل trace/قرار/latency/tokens/retrieval refs ونجح في مسار Telegram حي.
+- [x] السجلات JSON وتخفي credentials مع trace IDs للطلبات وAI.
+- [x] العمليات الحساسة الأساسية تكتب audit metadata منقاة ضمن نفس transaction.
+- [x] صورة Docker تعمل كمستخدم غير جذر وCompose يربط PostgreSQL/API على localhost.
+- [x] systemd units تفصل migration عن api/bot وتطبق hardening مع backup timer.
+- [x] backup custom-format يملك checksum/manifest/retention ولا يدخل Git.
+- [x] restore rehearsal تستخدم قاعدة معزولة وتتحقق من revision/counts وتحذفها بعد الاختبار.
+- [x] production preflight يتحقق حيًا من Telegram/DeepSeek/Gemini والقاعدة دون طباعة الأسرار.
+- [x] أسرار PostgreSQL/metrics قابلة للتدوير ذريًا، ودُورت فعليًا ثم أعيد اختبار التشغيل.
+- [x] بوابة Telegram الحية أثبتت AiRun/metrics/audit والصياغة المهنية، ثم نُظفت بيانات الاختبار المحددة فقط.
+- [ ] CI Python 3.12/3.13 للـcommit النهائي.
+- [ ] دمج PR الخاص بـM9 بعد نجاح CI والبوابة الحية.

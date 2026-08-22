@@ -4,16 +4,19 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **M8 — Memory Intelligence & Feedback**.
-- فرع التطوير الحالي: `codex/m8-memory-intelligence`، منشأ من `main` بعد دمج M7.
+- المرحلة الحالية: **M9 — Production Operations**، والبوابة المحلية والتشغيلية الحية مكتملة.
+- فرع التطوير الحالي: `codex/m9-production-operations`، منشأ من `main` بعد دمج M8.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
+- M8 اندمج في `main` عبر PR #4؛ merge SHA: `00cbf89841444c322af18fcc8b143fec83a17596`.
 - CI إغلاق M6: GitHub Actions run `32535443695` نجح على Python 3.12 و3.13، مع `compileall` وRuff correctness gate و`pytest`.
-- آخر تحقق M8 محلي: **83 passed, 1 warning**، وRuff correctness و`compileall` ناجحان.
+- آخر تحقق محلي كامل بعد تحديث وثائق M9: **92 passed, 1 warning**، مع بوابة Ruff الكاملة و`compileall` ناجحين.
 - تقييم الاسترجاع الثابت: **14/14 top-1**.
-- رأس PostgreSQL المحلي أصبح `0006`، وبروفة migration المعزولة الكاملة ناجحة.
+- رأس PostgreSQL المحلي أصبح `0007`، وبروفة migration المعزولة الكاملة ناجحة.
 - بوابة Telegram الحية لـM8 نجحت في 2026-08-22، بما فيها عدم التعلم قبل الموافقة والتقييم من العميل وإحصاءات المالك.
-- PR #4 مفتوح لـM8، وGitHub Actions run `32541333524` (#109) نجح على Python 3.12 و3.13. بقي الدمج فقط.
+- CI إغلاق M8 النهائي run `32541444456` نجح على Python 3.12 و3.13 قبل دمج PR #4.
+- M9 أضاف Docker/systemd محصنين، readiness/metrics/سجلات JSON، AiRun/audit، backup/restore وpreflight/secret rotation.
+- بوابة M9 الحية نجحت لـ`/health` و`/ready` وmetrics auth، Telegram/DeepSeek/Gemini، AI telemetry من رسالة Business فعلية، backup/restore معزول، وتدوير أسرار داخلي.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -52,7 +55,7 @@ Telegram Business reply
 Telegram image → Gemini Vision → structured evidence → DeepSeek → local safety → approval/reply
 ```
 
-## ما تم إنجازه حتى M8
+## ما تم إنجازه حتى M9
 
 - اتصال Telegram Business الرسمي وتخزين Business Connections.
 - ingest للرسائل مع idempotency وconversation revision.
@@ -89,6 +92,12 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - فصل summary/facts/preferences/private notes مع provenance وconfidence وretention.
 - تنقية محلية للبيانات الحساسة وتصدير/مسح ذاكرة من واجهة Telegram.
 - تقييم دوري قابل للضبط من العميل الحقيقي، وإحصاءات رضا للمالك دون تعلم تلقائي.
+- `AiRun` لكل تشغيل نصي/صورة مع trace، زمن، نتيجة، قرار، token usage ومراجع معرفة دون نسخ نص الرسالة.
+- سجل audit للرد الموافق عليه/المرفوض والعمليات الإدارية الحساسة، مع metadata منقاة.
+- API تشغيلية: `/health` liveness، `/ready` يعتمد DB/Alembic/config، و`/metrics` محمي اختياريًا بـBearer.
+- سجلات JSON منقاة مع trace IDs، وصورة Docker تعمل كمستخدم `secretary` غير جذر.
+- backup PostgreSQL custom-format مع checksum/retention وبروفة restore معزولة وحذف قاعدة البروفة دائمًا.
+- production preflight حي وتدوير ذري لأسرار PostgreSQL والقياسات.
 
 ## دليل إغلاق M6 المحلي — 2026-08-22
 
@@ -117,6 +126,16 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - ظهر تقييم 1–5 في رد Business حقيقي، وسجل العميل 5 نجوم وظهرت النتيجة في لوحة المالك.
 - نُظفت فقط البيانات الاصطناعية المحددة بعد الاختبار، وأعيد تشغيل البوت بالإعداد الدوري الافتراضي (كل 3 ردود).
 
+## دليل M9 المحلي والحي — 2026-08-22
+
+- migration `0007` اجتازت المسار الكامل `upgrade → downgrade base → upgrade` في PostgreSQL مؤقتة.
+- بُنيت صورة Docker 0.9.0 من الصفر، وعملت بمستخدم غير جذر؛ `/health` أعاد 200 ورفض `/ready` قاعدة غير مُرحّلة بـ503.
+- على قاعدة المشروع الحية: `/health=200`، `/ready=200`، metrics بلا token أعادت 401 ومع token أعادت Prometheus وtrace header.
+- production preflight تحقق حيًا من Telegram وDeepSeek وGemini بـHTTP 200 ومن تطابق Alembic `0007`.
+- أُنشئت نسخة PostgreSQL custom-format، ثم أعيدت إلى قاعدة عشوائية معزولة وتحققت المراجعة `0007` والأعداد، ثم حُذفت قاعدة الاستعادة.
+- دُوّر سر PostgreSQL ورمز metrics محليًا دون طباعتهما، وأعيد تشغيل poller كشجرة واحدة، وبقيت القاعدة والبيانات سليمة.
+- رسالة Telegram Business اصطناعية أنشأت AiRun ناجحًا مع latency/tokens وapproval مهني؛ رفض المالك أنشأ audit، ثم نُظفت صفوف الاختبار المحددة وأعيدت المحادثة إلى revision السابق.
+
 ## قواعد الاستمرارية
 
 1. لا تعيد بناء المشروع من الصفر ما دام التعديل يمكن دمجه في المعمارية الحالية.
@@ -132,7 +151,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة
 
-إغلاق M8 عبر commit/PR وCI على Python 3.12/3.13 ثم الدمج إلى `main`. بعد ذلك يبدأ M9 على فرع مستقل لتقوية التشغيل والإطلاق والنسخ الاحتياطي والمراقبة.
+إغلاق M9 عبر commit/PR وCI على Python 3.12/3.13 ثم الدمج إلى `main`. بعد اجتياز بوابة الدمج يبدأ M10 على فرع مستقل، مع تنفيذ الأتمتة المتقدمة فقط عبر Core عام وقابل للبيانات وبوابات حية مناسبة.
 
 ## ترتيب المراجع عند التعارض
 

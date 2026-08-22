@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from app.audit.service import write_audit_log
 from app.config import get_settings
 from app.db.models import KnowledgeBatch, KnowledgeItem
 from app.db.repositories import OwnerRepository
@@ -303,6 +304,15 @@ async def knowledge_delete(callback: CallbackQuery) -> None:
             await safe_callback_answer(callback, "لم أجد المعلومة", show_alert=True)
             return
         row.status = "DELETED"
+        write_audit_log(
+            session,
+            owner_id=row.owner_id,
+            actor="OWNER_TELEGRAM",
+            action="KNOWLEDGE_DELETE",
+            entity_type="KNOWLEDGE_ITEM",
+            entity_id=row.id,
+            metadata={"visibility": row.visibility, "version": row.version},
+        )
         session.commit()
     if callback.message:
         await callback.message.edit_text(
