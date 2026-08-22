@@ -70,15 +70,27 @@
 
 ## M10 — Advanced Automation
 
-الحالة: **منفذ واجتاز البوابات المحلية والتشغيلية وTelegram الحية وCI التنفيذي عبر PR #6؛ بقي CI دليل الإغلاق ثم الدمج**.
+الحالة: **مكتمل ومندمج في `main` عبر PR #6** بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
 
-- Flows فعلية أكثر من primitives الحالية.
-- schedules/reminders عند وجود use case واضح.
-- custom intents management متقدم.
-- confidence-based AUTO أوسع بعد evals كافية.
-- adapters لقنوات أخرى مع الحفاظ على نفس Core.
+- Flows فعلية متصلة بمحادثات Telegram Business مع draft/preview/publish ونسخة ثابتة للجلسة.
+- schedules/reminders للمالك فقط مع timezone وتسليم one-shot وclaim قابل للاسترداد.
+- custom intents management متقدم مع thresholds وربط اختياري بتدفق منشور.
+- confidence-based AUTO فعلي ضمن حدود local safety وPUBLIC grounding وحقوق Telegram الحية.
+- Core مستقل في `flows/` و`intents/` و`schedules/` مع بقاء Telegram Adapter مسؤولًا عن العرض والإرسال.
+- لا يوجد WhatsApp implementation في M10؛ قابلية إضافة قنوات أخرى محفوظة دون ادعاء دعم غير منفذ.
 
-تحقق النطاق عبر Core مستقل في `flows/` و`intents/` و`schedules/`، وTelegram Adapter مسؤول عن العرض والإرسال. لا يوجد WhatsApp implementation في M10؛ قابلية الإضافة محفوظة دون ادعاء دعم قناة غير منفذة.
+بوابة الإغلاق تحققت: 106 اختبارات، Ruff full، compileall، retrieval 14/14، migration/backup/restore وDocker وTelegram live gates ناجحة. نجح CI التنفيذي run `32546910568` ثم CI التوثيق النهائي run `32547007628` على Python 3.12 و3.13، وبعدها اندمج PR #6.
+
+## ما بعد M10 — Future Expansion
+
+**لا توجد مرحلة M11 نشطة حاليًا.** الخطة الأساسية المنفذة M0–M10 مغلقة ضمن نطاق المنتج الحالي. أي مرحلة لاحقة تُفتح فقط عند وجود متطلب جديد واضح أو مشكلة مقاسة تستدعي تطويرًا إضافيًا.
+
+أمثلة محتملة وليست التزامًا حاليًا:
+
+- قناة إضافية عبر Adapter جديد إذا ظهر احتياج فعلي.
+- توسيع الأتمتة أو الجداول إذا ظهرت حالة استخدام موثقة ومناسبة لقيود المنصة.
+- بنية استرجاع أثقل فقط إذا فشلت المقاييس الحالية في جودة أو حجم لا تحله البنية البسيطة.
+- تحسينات تشغيلية أو تجربة استخدام بناءً على telemetry وfeedback حقيقيين.
 
 ## قاعدة التخطيط
 
