@@ -2,7 +2,9 @@
 
 ## الحالة
 
-التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة على `codex/m10-advanced-automation`. فُتح PR #6، ونجح CI التنفيذي على Python 3.12/3.13 في run `32546910568`. بقي CI لتحديث دليل الإغلاق ثم الدمج فقط بعد نجاحه.
+**مكتملة ومندمجة في `main` عبر PR #6** بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
+
+اكتمل التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية على `codex/m10-advanced-automation`. نجح CI التنفيذي على Python 3.12/3.13 في run `32546910568`، ثم نجح CI النهائي بعد تحديث دليل الإغلاق في run `32547007628`، وبعدها تم الدمج إلى `main` في 2026-08-22.
 
 ## النطاق المنفذ
 
@@ -62,4 +64,9 @@ Docker non-root smoke: PASS
 - [x] Flow/Intent/Reminder/AUTO Telegram live gate.
 - [x] synthetic cleanup + single poller.
 - [x] GitHub CI Python 3.12/3.13 للـcommit التنفيذي في run `32546910568`.
-- [ ] merge PR بعد نجاح CI فقط.
+- [x] GitHub CI Python 3.12/3.13 لتحديث دليل الإغلاق في run `32547007628`.
+- [x] دمج PR #6 إلى `main` بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
+
+## نتيجة الإغلاق
+
+M10 مغلقة بالكامل ضمن نطاقها المعلن، ولا توجد عناصر متبقية من بوابة الدمج. أي تطوير بعد هذه النقطة يُعامل كمرحلة جديدة مستقلة، وليس كجزء ناقص من M10.
