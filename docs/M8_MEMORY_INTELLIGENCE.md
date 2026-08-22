@@ -63,4 +63,4 @@ isolated upgrade head → downgrade base → upgrade head: PASS
 
 ## حالة الإغلاق
 
-التنفيذ والاختبارات المحلية والحية مكتملة على `codex/m8-memory-intelligence`. لا تُسجل M8 مندمجة قبل نجاح CI على Python 3.12 و3.13 ودمج PR المرحلة.
+التنفيذ والاختبارات المحلية والحية وGitHub Actions run `32541333524` مكتملة على `codex/m8-memory-intelligence`. لا تُسجل M8 مندمجة قبل دمج PR #4.

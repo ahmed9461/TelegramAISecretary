@@ -236,7 +236,7 @@ pytest: PASS
 
 ## M8 — Memory Intelligence & Feedback
 
-**Status: التنفيذ والبوابة المحلية والحية مكتملة على `codex/m8-memory-intelligence`؛ PR/CI والدمج قيد الإغلاق.**
+**Status: التنفيذ والبوابة المحلية والحية وCI مكتملة على `codex/m8-memory-intelligence`؛ دمج PR #4 قيد الإغلاق.**
 
 ### Implemented
 
@@ -270,6 +270,20 @@ isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
 - رد Business حقيقي أظهر شريط تقييم 1–5، وسجل العميل 5 نجوم.
 - شاشة `📊 رضا العملاء` عرضت 5.0 من 5 وتوزيعًا صحيحًا.
 - حُذفت بعد الاختبار السجلات الاصطناعية المحددة فقط: ذاكرة واحدة، 3 اقتراحات، تقييم واحد ومعلومة PUBLIC واحدة. أعيد تشغيل البوت بالإعداد الافتراضي كل 3 ردود.
+
+### Remote CI
+
+GitHub Actions run `32541333524` (#109) نجح بالكامل:
+
+```text
+Python 3.12: PASS
+Python 3.13: PASS
+Ruff correctness: PASS
+compileall: PASS
+pytest: PASS
+```
+
+لا تسجل M8 مندمجة حتى يكتمل دمج PR #4.
 
 ## Documentation hardening — 2026-08-22
 

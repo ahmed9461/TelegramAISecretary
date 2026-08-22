@@ -4,7 +4,7 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M8 — Memory Intelligence & Feedback** في الفرع `codex/m8-memory-intelligence`. اندمج M7 في `main` عبر PR #3، واجتازت M8 بوابتها المحلية وTelegram الحية؛ PR/CI والدمج قيد الإغلاق.
+التطوير الحالي على **M8 — Memory Intelligence & Feedback** في الفرع `codex/m8-memory-intelligence`. اندمج M7 في `main` عبر PR #3، واجتازت M8 بوابتها المحلية وTelegram الحية وCI على Python 3.12/3.13؛ دمج PR #4 قيد الإغلاق.
 
 آخر gate محلي موثق لـM8:
 

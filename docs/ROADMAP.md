@@ -44,7 +44,7 @@
 
 ## M8 — Memory Intelligence
 
-الحالة: **منفذ واجتاز البوابة المحلية وTelegram الحية على `codex/m8-memory-intelligence`؛ PR/CI والدمج قيد الإغلاق**.
+الحالة: **منفذ واجتاز البوابة المحلية وTelegram الحية وCI على Python 3.12/3.13؛ دمج PR #4 قيد الإغلاق**.
 
 - اقتراح تحديثات ذاكرة الشخص من المحادثة مع موافقة المالك.
 - فصل facts/preferences/relationship summary بصورة أوضح.

@@ -146,4 +146,5 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] migration `0006` اجتازت بروفة upgrade/downgrade/re-upgrade معزولة.
 - [x] Telegram live gate نجحت، ثم نُظفت البيانات الاصطناعية فقط.
 - [x] محليًا: 83 passed، compileall وRuff correctness و14/14 retrieval regression.
-- [ ] CI Python 3.12/3.13 ودمج PR المرحلة.
+- [x] CI Python 3.12/3.13 في run `32541333524`.
+- [ ] دمج PR #4.
