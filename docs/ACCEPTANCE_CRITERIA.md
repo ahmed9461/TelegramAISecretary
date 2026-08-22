@@ -185,4 +185,12 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] Telegram live: draft/preview/publish/route/two-step completion/reminder/AUTO/professional copy ثم تنظيف محدد.
 - [x] محليًا: 106 passed، Ruff full، compileall، retrieval 14/14، Docker non-root/API gates.
 - [x] CI Python 3.12/3.13 للـcommit التنفيذي في run `32546910568`.
-- [ ] دمج PR الخاص بـM10 بعد نجاح CI والبوابة الحية.
+- [x] CI Python 3.12/3.13 لتحديث دليل الإغلاق في run `32547007628`.
+- [x] دمج PR #6 بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22` بعد نجاح CI والبوابات الحية.
+
+## إغلاق baseline الحالي
+
+- [x] M0–M10 موثقة ومغلقة ضمن نطاقها الحالي.
+- [x] `main` هو baseline المنتج بالإصدار `0.10.0` ورأس migration `0008`.
+- [x] لا توجد M11 نشطة أو مطلوبة لإكمال النطاق الحالي.
+- [x] أي milestone لاحقة يجب أن تملك نطاقًا جديدًا، سببًا واضحًا، ومعايير قبول مستقلة قبل التنفيذ.
