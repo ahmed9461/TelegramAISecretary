@@ -28,3 +28,4 @@ jobs:
           cp .env.example .env
           docker compose config -q
           docker build --tag telegram-ai-secretary:ci .
+          docker run --rm telegram-ai-secretary:ci python -c "import psycopg; import scripts.production_preflight; print(psycopg.pq.version())"
