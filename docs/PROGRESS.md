@@ -341,7 +341,7 @@ Docker non-root health/readiness smoke: PASS
 
 ## M10 — Advanced Automation
 
-**Status: التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة على `codex/m10-advanced-automation`؛ PR/CI والدمج قيد الإغلاق.**
+**Status: التنفيذ وجميع البوابات الحية مكتملة، وCI التنفيذي ناجح عبر PR #6؛ بقي CI دليل الإغلاق ثم الدمج.**
 
 ### Implemented
 
@@ -377,6 +377,11 @@ Docker Compose config/build/non-root smoke: PASS
 - تذكير مستقبلي حسب Asia/Riyadh وصل مرة واحدة ثم أصبح غير فعال.
 - تحية في AUTO خرجت مباشرة مرة واحدة بصياغة «كيف أقدر أساعدك؟» دون «اليوم» أو reason codes، مع AiRun SUCCESS وApproval SENT وAudit SYSTEM.
 - نُظفت العناصر الاصطناعية المحددة فقط؛ عادت القاعدة إلى messages=37، revision=17، ai_runs=0، flows/intents/sessions/schedules=0.
+
+### Remote CI
+
+- فُتح PR #6 عند commit `bc5b7787d70c0c60a41ead552635a311b560341c`.
+- نجح GitHub Actions run `32546910568` على Python 3.12 و3.13؛ شملت 3.12 بوابة Ruff/compileall/pytest وبناء صورة الإنتاج.
 
 ## Documentation hardening — 2026-08-22
 

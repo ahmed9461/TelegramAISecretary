@@ -184,5 +184,5 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] migration `0008` وبروفة upgrade/downgrade/re-upgrade وbackup/restore نجحت.
 - [x] Telegram live: draft/preview/publish/route/two-step completion/reminder/AUTO/professional copy ثم تنظيف محدد.
 - [x] محليًا: 106 passed، Ruff full، compileall، retrieval 14/14، Docker non-root/API gates.
-- [ ] CI Python 3.12/3.13 للـcommit النهائي.
+- [x] CI Python 3.12/3.13 للـcommit التنفيذي في run `32546910568`.
 - [ ] دمج PR الخاص بـM10 بعد نجاح CI والبوابة الحية.

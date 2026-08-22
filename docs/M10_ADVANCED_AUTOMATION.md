@@ -2,7 +2,7 @@
 
 ## الحالة
 
-التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة على `codex/m10-advanced-automation`. بقي commit وPR وCI على Python 3.12/3.13 ثم الدمج فقط بعد نجاحها.
+التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة على `codex/m10-advanced-automation`. فُتح PR #6، ونجح CI التنفيذي على Python 3.12/3.13 في run `32546910568`. بقي CI لتحديث دليل الإغلاق ثم الدمج فقط بعد نجاحه.
 
 ## النطاق المنفذ
 
@@ -61,5 +61,5 @@ Docker non-root smoke: PASS
 - [x] Docker non-root/API gates.
 - [x] Flow/Intent/Reminder/AUTO Telegram live gate.
 - [x] synthetic cleanup + single poller.
-- [ ] GitHub CI Python 3.12/3.13.
+- [x] GitHub CI Python 3.12/3.13 للـcommit التنفيذي في run `32546910568`.
 - [ ] merge PR بعد نجاح CI فقط.
