@@ -4,7 +4,7 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **M9 — Production Operations**، والبوابة المحلية والتشغيلية الحية مكتملة.
+- المرحلة الحالية: **M9 — Production Operations**، والبوابة المحلية والتشغيلية الحية وCI مكتملة؛ الدمج النهائي قيد الإغلاق عبر PR #5.
 - فرع التطوير الحالي: `codex/m9-production-operations`، منشأ من `main` بعد دمج M8.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
@@ -17,6 +17,7 @@
 - CI إغلاق M8 النهائي run `32541444456` نجح على Python 3.12 و3.13 قبل دمج PR #4.
 - M9 أضاف Docker/systemd محصنين، readiness/metrics/سجلات JSON، AiRun/audit، backup/restore وpreflight/secret rotation.
 - بوابة M9 الحية نجحت لـ`/health` و`/ready` وmetrics auth، Telegram/DeepSeek/Gemini، AI telemetry من رسالة Business فعلية، backup/restore معزول، وتدوير أسرار داخلي.
+- CI الأول لـM9 في GitHub Actions run `32544367834` نجح على Python 3.12 و3.13؛ شملت مهمة 3.12 أيضًا فحص Compose وبناء صورة الإنتاج.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -151,7 +152,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة
 
-إغلاق M9 عبر commit/PR وCI على Python 3.12/3.13 ثم الدمج إلى `main`. بعد اجتياز بوابة الدمج يبدأ M10 على فرع مستقل، مع تنفيذ الأتمتة المتقدمة فقط عبر Core عام وقابل للبيانات وبوابات حية مناسبة.
+إعادة CI بعد توثيق بوابة PR #5 ثم دمج M9 إلى `main`. بعد اجتياز بوابة الدمج يبدأ M10 على فرع مستقل، مع تنفيذ الأتمتة المتقدمة فقط عبر Core عام وقابل للبيانات وبوابات حية مناسبة.
 
 ## ترتيب المراجع عند التعارض
 

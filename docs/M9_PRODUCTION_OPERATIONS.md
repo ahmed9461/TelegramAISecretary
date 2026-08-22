@@ -2,7 +2,7 @@
 
 ## الحالة
 
-التنفيذ والبوابة المحلية والتشغيلية/Telegram الحية مكتملة في `codex/m9-production-operations`. بقي commit/PR وCI على Python 3.12/3.13 ثم الدمج بعد نجاحهما.
+التنفيذ والبوابة المحلية والتشغيلية/Telegram الحية مكتملة في `codex/m9-production-operations`. فُتح PR #5 ونجح CI الأول على Python 3.12/3.13 في run `32544367834`. بقي CI توثيق الإصدار ثم الدمج بعد نجاحه.
 
 ## نطاق المرحلة
 
@@ -81,5 +81,6 @@ Docker build: PASS
 - [x] provider/API/Telegram live gate.
 - [x] synthetic cleanup + single poller.
 - [x] final full suite after docs: 92 passed.
-- [ ] GitHub CI Python 3.12/3.13.
+- [x] GitHub CI Python 3.12/3.13 في run `32544367834` للـcommit التنفيذي.
+- [ ] GitHub CI بعد commit توثيق بوابة الإصدار.
 - [ ] merge PR بعد CI فقط.

@@ -287,7 +287,7 @@ pytest: PASS
 
 ## M9 — Production Operations
 
-**Status: التنفيذ والبوابة المحلية والتشغيلية الحية مكتملان على `codex/m9-production-operations`؛ PR/CI والدمج قيد الإغلاق.**
+**Status: التنفيذ والبوابة المحلية والتشغيلية الحية وCI الأول مكتملة على `codex/m9-production-operations`؛ PR #5 والدمج النهائي قيد الإغلاق.**
 
 ### Implemented
 
@@ -330,6 +330,13 @@ Docker non-root health/readiness smoke: PASS
 - دُوّر سر PostgreSQL وmetrics token محليًا؛ أعيد تشغيل البوت واستمر poller واحد بلا conflict أو خطأ قاعدة بيانات.
 - رسالة Business اصطناعية أنشأت AiRun `SUCCESS` وقياسات latency/tokens، وأظهرت بطاقة موافقة عربية مهنية واقتراحًا متعلقًا بالنشاط دون العبارة الممنوعة.
 - رفض البطاقة أنشأ audit `PROPOSED_RESPONSE_REJECTED`. بعد التحقق أزيلت فقط AiRun/approval/audit/message الاصطناعية وأعيد conversation revision؛ بقيت 37 رسالة وKnowledgeItem حقيقية فعالة واحدة، والذاكرة/feedback الاصطناعيان صفرًا.
+
+### Remote CI
+
+- فُتح PR #5 من `codex/m9-production-operations` إلى `main` عند commit `8b956f95d0cf52338007f0718a732e8a44a79470`.
+- GitHub Actions run `32544367834`: Python 3.12 و3.13 PASS.
+- تضمنت مهمة Python 3.12 بوابة Ruff الكاملة و`compileall` و`pytest` والتحقق من Compose وبناء صورة الإنتاج، وجميعها PASS.
+- بقيت إعادة CI بعد commit توثيق بوابة الإصدار ثم الدمج فقط عند نجاحها.
 
 ## Documentation hardening — 2026-08-22
 

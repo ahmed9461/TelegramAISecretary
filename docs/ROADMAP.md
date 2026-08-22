@@ -57,7 +57,7 @@
 
 ## M9 — Production Operations
 
-الحالة: **منفذ واجتاز البوابة المحلية والتشغيلية الحية؛ PR/CI والدمج قيد الإغلاق**.
+الحالة: **منفذ واجتاز البوابة المحلية والتشغيلية الحية وCI الأول؛ PR #5 والدمج النهائي قيد الإغلاق**.
 
 - deployment موثق على Ubuntu باستخدام systemd/Docker، مع migration service وصورة غير جذرية.
 - liveness وreadiness حقيقية، trace IDs، وسجلات JSON مع تنقية الأسرار.
@@ -66,6 +66,7 @@
 - backup PostgreSQL بصيغة custom مع checksum وretention وبروفة restore في قاعدة معزولة.
 - runbooks للأعطال الشائعة وproduction preflight للمزودات وقاعدة البيانات.
 - تدوير ذري لأسرار PostgreSQL/metrics وإجراء موثق لبقية مزودي الخدمات.
+- GitHub Actions run `32544367834` نجح على Python 3.12 و3.13، مع بناء صورة الإنتاج في مهمة 3.12؛ إعادة البوابة بعد توثيق الإصدار مطلوبة قبل الدمج.
 
 ## M10 — Advanced Automation
 
