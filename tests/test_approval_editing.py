@@ -23,6 +23,16 @@ def test_pending_approval_can_be_edited_without_sending() -> None:
         conversation_revision=2,
         candidate_response="رد آلي",
         status="PENDING",
+        context_json={
+            "sources": [
+                {
+                    "id": 12,
+                    "title": "السعر المعتمد",
+                    "visibility": "PUBLIC",
+                    "score": 0.9,
+                }
+            ]
+        },
     )
     conversation = Conversation(
         id=3,
@@ -52,6 +62,7 @@ def test_pending_approval_can_be_edited_without_sending() -> None:
     draft = get_editable_approval(session, 7)
     assert draft is not None
     assert draft.trigger_text == "كم السعر؟"
+    assert draft.source_snapshots[0]["id"] == 12
     assert update_approval_candidate(session, 7, text="السعر المعتمد هو 10 دولارات")
     assert approval.candidate_response == "السعر المعتمد هو 10 دولارات"
     assert session.flushed is True

@@ -4,12 +4,14 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **M6 — Secretary Learning, Bulk Knowledge, Rich UI & Contextual Buttons**.
-- فرع التطوير الحالي: `m6-secretary-learning`.
-- الدمج إلى `main`: لم يتم بعد؛ اختبار Telegram الحي النهائي نجح محليًا في 2026-08-22، وPR #2 ما زال Draft حتى نشر التغييرات وإعادة CI والمراجعة.
-- آخر CI موثق على الفرع: Python 3.12 و3.13 نجحا، مع `compileall` وRuff correctness gate و`pytest`.
-- آخر عدد اختبارات موثق في CI: **56 passed, 1 warning**.
-- آخر تحقق محلي بعد fault injection وربط intent عبر approval: **60 passed, 1 warning** مع نجاح `compileall` وRuff correctness gate.
+- المرحلة الحالية: **M7 — Retrieval Quality & Knowledge Operations**.
+- فرع التطوير الحالي: `codex/m7-retrieval-quality`، منشأ من `main` بعد إغلاق M6.
+- M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
+- CI إغلاق M6: GitHub Actions run `32535443695` نجح على Python 3.12 و3.13، مع `compileall` وRuff correctness gate و`pytest`.
+- آخر تحقق M7 محلي: **72 passed, 1 warning**، وRuff correctness و`compileall` ناجحان.
+- تقييم الاسترجاع الثابت: **14/14 top-1**، ورأس PostgreSQL المحلي `0005`.
+- بوابة Telegram الحية لـM7 نجحت في 2026-08-22.
+- PR #3 مفتوح؛ CI run `32538952535` (#104) نجح على Python 3.12 و3.13. بقيت مراجعة الدمج فقط.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -48,7 +50,7 @@ Telegram Business reply
 Telegram image → Gemini Vision → structured evidence → DeepSeek → local safety → approval/reply
 ```
 
-## ما تم إنجازه حتى M6
+## ما تم إنجازه حتى M7
 
 - اتصال Telegram Business الرسمي وتخزين Business Connections.
 - ingest للرسائل مع idempotency وconversation revision.
@@ -74,6 +76,13 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - أزرار دائمة 🌐 وأزرار سياقية 🎯 تظهر عند مطابقة الكلمات/السياق، بدل الظهور العشوائي.
 - زر رد ثابت، رابط، وتحويل للمتابعة البشرية.
 - retry محدود لرسائل المالك/بطاقات الموافقة عند أخطاء Telegram الشبكية المؤقتة؛ ردود العملاء تبقى fail-closed لمنع التكرار.
+- استرجاع عربي/إنجليزي deterministic مع normalization ووزن للعنوان والوسوم ونوع المعلومة.
+- استبعاد المعرفة الخاصة والمنتهية، وكشف التعارض بين الحقائق الفعالة بدل الاختيار الصامت.
+- دفعات معرفة قابلة للمراجعة والتراجع، ومنع إعادة استيراد المصدر نفسه بصمته.
+- versioning عند تعديل المعرفة بدل محو النسخة السابقة.
+- حفظ provenance المستخدم في approval كـsnapshot دائم لا يتغير إذا تغيرت المعرفة لاحقًا.
+- صياغات إدارة وapproval عربية مهنية لا تعرض أكواد السياسة أو أسماء مزودي الذكاء.
+- منع عبارة «كيف أقدر أساعدك اليوم؟» وتوجيه السكرتير لاستخدام سياق النشاط عندما يتوفر.
 
 ## دليل إغلاق M6 المحلي — 2026-08-22
 
@@ -99,9 +108,9 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 9. لا يوجد تعلم صامت من ردود المالك.
 10. لا تُعامل ذاكرة العميل كمصدر حقيقة للأسعار أو الالتزامات الحالية.
 
-## الخطوة القادمة بعد تثبيت M6
+## الخطوة القادمة
 
-انتهى gate المحلي لـM6. الخطوة المباشرة هي مراجعة diff الحالي، نشره على PR #2، إعادة CI على Python 3.12/3.13، ثم إخراج PR من Draft ودمجه فقط بعد المراجعة. بعد الدمج يبدأ M7 على فرع مستقل لتحسين جودة retrieval وعمليات المعرفة؛ لا يبدأ M7 داخل فرع M6.
+إخراج PR #3 من Draft ودمج M7 بعد مراجعة الحالة النهائية. بعد ذلك يبدأ M8 على فرع مستقل لإضافة اقتراحات الذاكرة والتقييمات بموافقة صريحة، دون تعلم صامت.
 
 ## ترتيب المراجع عند التعارض
 

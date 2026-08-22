@@ -14,6 +14,7 @@ class EditableApproval:
     owner_id: int
     candidate_response: str
     trigger_text: str
+    source_snapshots: tuple[dict, ...] = ()
 
 
 def get_editable_approval(session: Session, approval_id: int) -> EditableApproval | None:
@@ -34,6 +35,11 @@ def get_editable_approval(session: Session, approval_id: int) -> EditableApprova
         owner_id=conversation.owner_id,
         candidate_response=approval.candidate_response,
         trigger_text=trigger_text,
+        source_snapshots=tuple(
+            item
+            for item in ((approval.context_json or {}).get("sources") or [])
+            if isinstance(item, dict)
+        ),
     )
 
 

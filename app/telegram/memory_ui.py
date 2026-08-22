@@ -45,7 +45,9 @@ def _home_keyboard(contacts: list[Contact]) -> InlineKeyboardMarkup:
 
 
 def _contact_keyboard(contact_id: int, *, share_with_ai: bool) -> InlineKeyboardMarkup:
-    share_label = "🟢 مشاركة الذاكرة مع AI" if share_with_ai else "⚪ عدم مشاركة الذاكرة"
+    share_label = (
+        "🟢 مشاركة الملخص مع السكرتير" if share_with_ai else "⚪ عدم مشاركة الملخص مع السكرتير"
+    )
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -88,8 +90,8 @@ def _format_memory(contact: Contact, memory: ContactMemory | None) -> str:
         f"Telegram ID: {contact.telegram_user_id}\n\n"
         f"🧠 الملخص: {summary[:1200]}\n\n"
         f"🔒 ملاحظة خاصة: {private_notes[:800]}\n\n"
-        f"مشاركة الذاكرة مع AI: {'نعم' if shared and allowed else 'لا'}\n\n"
-        "الملاحظة الخاصة لا تدخل إلى نموذج الذكاء الاصطناعي مطلقًا."
+        f"مشاركة الملخص مع السكرتير: {'نعم' if shared and allowed else 'لا'}\n\n"
+        "الملاحظة الخاصة لا تدخل إلى خدمة الصياغة مطلقًا."
     )
 
 
@@ -164,8 +166,7 @@ async def memory_summary_start(callback: CallbackQuery, state: FSMContext) -> No
     await state.set_state(MemoryStates.summary)
     if callback.message:
         await callback.message.answer(
-            "🧠 اكتب ملخصًا قصيرًا مفيدًا عن هذا الشخص.\n"
-            "اكتب — لمسح الملخص الحالي."
+            "🧠 اكتب ملخصًا قصيرًا مفيدًا عن هذا الشخص.\nاكتب — لمسح الملخص الحالي."
         )
     await callback.answer()
 
@@ -198,7 +199,11 @@ async def memory_summary_save(message: Message, state: FSMContext) -> None:
         "✅ تم تحديث ملخص الذاكرة.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ ذاكرة الشخص", callback_data=f"memory:contact:{contact_id}")]
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ ذاكرة الشخص", callback_data=f"memory:contact:{contact_id}"
+                    )
+                ]
             ]
         ),
     )
@@ -218,8 +223,7 @@ async def memory_private_start(callback: CallbackQuery, state: FSMContext) -> No
     await state.set_state(MemoryStates.private_notes)
     if callback.message:
         await callback.message.answer(
-            "🔒 اكتب ملاحظتك الخاصة. هذه الملاحظة لك فقط ولا تدخل إلى AI.\n"
-            "اكتب — لمسحها."
+            "🔒 اكتب ملاحظتك الخاصة. هذه الملاحظة لك فقط ولا تدخل إلى خدمة الصياغة.\nاكتب — لمسحها."
         )
     await callback.answer()
 
@@ -252,7 +256,11 @@ async def memory_private_save(message: Message, state: FSMContext) -> None:
         "✅ تم حفظ الملاحظة الخاصة.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ ذاكرة الشخص", callback_data=f"memory:contact:{contact_id}")]
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ ذاكرة الشخص", callback_data=f"memory:contact:{contact_id}"
+                    )
+                ]
             ]
         ),
     )

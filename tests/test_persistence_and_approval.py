@@ -88,3 +88,21 @@ def test_approval_preserves_intent_for_contextual_menu() -> None:
 
     assert claim is not None
     assert claim.intent == "PAYMENT_METHODS"
+
+
+def test_approval_context_intent_supersedes_legacy_reason_marker() -> None:
+    session = make_session()
+    result = ingest_message(session, owner_telegram_id=100, incoming=incoming(1))
+    approval = create_approval(
+        session,
+        conversation=result.conversation,
+        trigger_message_id=result.message.id,
+        candidate_response="candidate",
+        reason="TEXT_SAFE_AUTO|INTENT=LEGACY",
+        context={"intent": "GREETING", "sources": [{"id": 3}]},
+    )
+
+    claim = claim_for_send(session, approval.id)
+
+    assert claim is not None
+    assert claim.intent == "GREETING"

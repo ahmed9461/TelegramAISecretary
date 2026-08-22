@@ -84,15 +84,21 @@ def build_ai_context(
     trusted_knowledge = [
         {
             "id": hit.id,
+            "type": hit.type,
             "title": hit.title,
             "content": hit.content,
             "visibility": hit.visibility,
             "score": round(hit.score, 4),
+            "source": hit.source,
+            "version": hit.version,
+            "valid_until": hit.valid_until.isoformat() if hit.valid_until else None,
+            "conflict_ids": list(hit.conflict_ids),
         }
         for hit in hits
     ]
     confidence = hits[0].score if hits else 0.0
     has_public_grounding = any(hit.visibility == Visibility.PUBLIC.value for hit in hits)
+    has_conflicting_grounding = any(hit.has_conflict for hit in hits)
     brain_context = build_brain_context(
         session,
         owner_id=conversation.owner_id,
@@ -109,6 +115,7 @@ def build_ai_context(
             "trusted_knowledge": trusted_knowledge,
             "has_grounding": bool(hits),
             "has_public_grounding": has_public_grounding,
+            "has_conflicting_grounding": has_conflicting_grounding,
             "retrieval_confidence": min(1.0, confidence),
             **brain_context,
         },

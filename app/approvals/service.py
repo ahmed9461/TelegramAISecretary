@@ -40,6 +40,7 @@ def create_approval(
     trigger_message_id: int | None,
     candidate_response: str,
     reason: str,
+    context: dict | None = None,
     ttl_hours: int = 24,
 ) -> Approval:
     approval = ApprovalRepository.create(
@@ -48,6 +49,7 @@ def create_approval(
         trigger_message_id=trigger_message_id,
         candidate_response=candidate_response,
         reason=reason,
+        context=context,
         ttl_hours=ttl_hours,
     )
     session.commit()
@@ -84,7 +86,7 @@ def preview_claim(session: Session, approval_id: int) -> ApprovalClaim | None:
         chat_id=conversation.telegram_chat_id,
         business_connection_id=conversation.business_connection_id,
         text=approval.candidate_response,
-        intent=approval_intent(approval.reason),
+        intent=str((approval.context_json or {}).get("intent") or approval_intent(approval.reason)),
     )
 
 
@@ -104,13 +106,15 @@ def claim_for_send(session: Session, approval_id: int) -> ApprovalClaim | None:
         chat_id=conversation.telegram_chat_id,
         business_connection_id=conversation.business_connection_id,
         text=approval.candidate_response,
-        intent=approval_intent(approval.reason),
+        intent=str((approval.context_json or {}).get("intent") or approval_intent(approval.reason)),
     )
     session.commit()
     return claim
 
 
-def mark_sent(session: Session, approval_id: int, *, telegram_message_id: int | None = None) -> None:
+def mark_sent(
+    session: Session, approval_id: int, *, telegram_message_id: int | None = None
+) -> None:
     approval = session.get(Approval, approval_id)
     if approval is None:
         return

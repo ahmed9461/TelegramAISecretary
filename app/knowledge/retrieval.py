@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import math
 import re
+import unicodedata
+from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,20 +13,99 @@ from sqlalchemy.orm import Session
 from app.db.enums import Visibility
 from app.db.models import KnowledgeItem
 
-_TOKEN_RE = re.compile(r"[\w\u0600-\u06FF]+", re.UNICODE)
+_TOKEN_RE = re.compile(r"[^\W_]+", re.UNICODE)
+_ARABIC_DIACRITICS_RE = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]")
+_ARABIC_TRANSLATION = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي", "ؤ": "و", "ئ": "ي"})
+_STOPWORDS = {
+    "في",
+    "من",
+    "على",
+    "الى",
+    "عن",
+    "هل",
+    "ما",
+    "ماذا",
+    "كيف",
+    "هو",
+    "هي",
+    "هذا",
+    "هذه",
+    "the",
+    "a",
+    "an",
+    "is",
+    "are",
+    "of",
+    "to",
+}
+_TYPE_HINTS = {
+    "PRICE": {"سعر", "اسعار", "تكلفه", "رسوم", "price", "cost"},
+    "POLICY": {"سياسه", "شروط", "استرجاع", "الغاء", "policy", "terms", "refund"},
+    "FAQ": {"سوال", "اسئله", "faq"},
+    "SERVICE": {"خدمه", "خدمات", "service", "services"},
+    "PRODUCT": {"منتج", "منتجات", "product", "products"},
+}
 
 
 @dataclass(frozen=True, slots=True)
 class KnowledgeHit:
     id: int
+    type: str
     title: str
     content: str
     visibility: str
     score: float
+    source: str | None = None
+    tags: tuple[str, ...] = ()
+    version: int = 1
+    valid_until: datetime | None = None
+    conflict_ids: tuple[int, ...] = ()
+
+    @property
+    def has_conflict(self) -> bool:
+        return bool(self.conflict_ids)
+
+
+def normalize_search_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).casefold().translate(_ARABIC_TRANSLATION)
+    normalized = _ARABIC_DIACRITICS_RE.sub("", normalized)
+    return " ".join(normalized.split())
 
 
 def _tokens(value: str) -> set[str]:
-    return {token.casefold() for token in _TOKEN_RE.findall(value) if len(token) >= 2}
+    normalized = normalize_search_text(value)
+    tokens = {
+        token
+        for token in _TOKEN_RE.findall(normalized)
+        if len(token) >= 2 and token not in _STOPWORDS
+    }
+    tokens.update(token[2:] for token in tuple(tokens) if token.startswith("ال") and len(token) > 4)
+    return tokens
+
+
+def _active_at(row: KnowledgeItem, now: datetime) -> bool:
+    valid_from = row.valid_from
+    valid_until = row.valid_until
+    if valid_from is not None and valid_from.tzinfo is None:
+        valid_from = valid_from.replace(tzinfo=UTC)
+    if valid_until is not None and valid_until.tzinfo is None:
+        valid_until = valid_until.replace(tzinfo=UTC)
+    return not ((valid_from and valid_from > now) or (valid_until and valid_until < now))
+
+
+def _conflict_map(rows: list[KnowledgeItem]) -> dict[int, tuple[int, ...]]:
+    groups: dict[tuple[str, str], list[KnowledgeItem]] = defaultdict(list)
+    for row in rows:
+        groups[(row.type.upper(), normalize_search_text(row.title))].append(row)
+    conflicts: dict[int, tuple[int, ...]] = {}
+    for group in groups.values():
+        contents = {normalize_search_text(row.content) for row in group}
+        if len(group) < 2 or len(contents) < 2:
+            continue
+        ids = tuple(sorted(row.id for row in group))
+        for row in group:
+            conflicts[row.id] = tuple(item_id for item_id in ids if item_id != row.id)
+    return conflicts
 
 
 def retrieve_knowledge(
@@ -34,53 +116,85 @@ def retrieve_knowledge(
     limit: int = 6,
     now: datetime | None = None,
 ) -> list[KnowledgeHit]:
-    """Small-KB deterministic retriever.
-
-    This intentionally keeps PostgreSQL as the source of truth and avoids a second vector
-    database until the knowledge base is large enough to justify one. PRIVATE rows are never
-    returned to the LLM. PUBLIC and INTERNAL rows may guide the model; INTERNAL is labelled so
-    the model knows it must not disclose it verbatim.
-    """
-    now = now or datetime.now(timezone.utc)
+    """Deterministic Arabic/English retrieval with provenance and conflict signals."""
+    now = now or datetime.now(UTC)
     query_tokens = _tokens(query)
     if not query_tokens:
         return []
-
-    rows = list(
-        session.scalars(
+    rows = [
+        row
+        for row in session.scalars(
             select(KnowledgeItem).where(
                 KnowledgeItem.owner_id == owner_id,
                 KnowledgeItem.status == "ACTIVE",
                 KnowledgeItem.visibility.in_([Visibility.PUBLIC.value, Visibility.INTERNAL.value]),
             )
         )
-    )
+        if _active_at(row, now)
+    ]
+    if not rows:
+        return []
+
+    row_tokens: dict[int, set[str]] = {}
+    document_frequency: Counter[str] = Counter()
+    for row in rows:
+        tokens = _tokens(f"{row.title} {row.content} {' '.join(row.tags_json or [])}")
+        row_tokens[row.id] = tokens
+        document_frequency.update(tokens)
+    query_weights = {
+        token: math.log((len(rows) + 1) / (document_frequency.get(token, 0) + 1)) + 1.0
+        for token in query_tokens
+    }
+    total_query_weight = sum(query_weights.values()) or 1.0
+    normalized_query = normalize_search_text(query)
+    hinted_types = {
+        item_type for item_type, hints in _TYPE_HINTS.items() if query_tokens.intersection(hints)
+    }
+    conflicts = _conflict_map(rows)
 
     scored: list[KnowledgeHit] = []
     for row in rows:
-        if row.valid_from and row.valid_from > now:
-            continue
-        if row.valid_until and row.valid_until < now:
-            continue
         title_tokens = _tokens(row.title)
-        content_tokens = _tokens(row.content)
-        overlap = len(query_tokens & content_tokens)
-        title_overlap = len(query_tokens & title_tokens)
-        if overlap == 0 and title_overlap == 0:
+        tag_tokens = _tokens(" ".join(row.tags_json or []))
+        all_overlap = query_tokens.intersection(row_tokens[row.id])
+        if not all_overlap:
             continue
-        # 0..1-ish deterministic score with a title match bonus.
-        coverage = overlap / max(1, len(query_tokens))
-        title_bonus = 0.25 * (title_overlap / max(1, len(query_tokens)))
-        score = min(1.0, coverage + title_bonus)
+        weighted_overlap = sum(query_weights[token] for token in all_overlap) / total_query_weight
+        title_overlap = (
+            sum(query_weights[token] for token in query_tokens.intersection(title_tokens))
+            / total_query_weight
+        )
+        tag_overlap = (
+            sum(query_weights[token] for token in query_tokens.intersection(tag_tokens))
+            / total_query_weight
+        )
+        phrase_bonus = (
+            0.12 if normalized_query in normalize_search_text(f"{row.title} {row.content}") else 0.0
+        )
+        type_bonus = 0.08 if row.type.upper() in hinted_types else 0.0
+        score = min(
+            1.0,
+            (0.58 * weighted_overlap)
+            + (0.28 * title_overlap)
+            + (0.1 * tag_overlap)
+            + phrase_bonus
+            + type_bonus,
+        )
         scored.append(
             KnowledgeHit(
                 id=row.id,
+                type=row.type,
                 title=row.title,
                 content=row.content,
                 visibility=row.visibility,
                 score=score,
+                source=row.source,
+                tags=tuple(str(tag) for tag in (row.tags_json or [])),
+                version=max(1, row.version or 1),
+                valid_until=row.valid_until,
+                conflict_ids=conflicts.get(row.id, ()),
             )
         )
 
-    scored.sort(key=lambda item: (-item.score, item.id))
+    scored.sort(key=lambda item: (-item.score, item.has_conflict, item.id))
     return scored[: max(1, limit)]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 
 from aiogram import Bot, F, Router
@@ -11,13 +12,20 @@ from app.ai.factory import build_ai_provider
 from app.config import get_settings
 from app.db.repositories import OwnerRepository
 from app.db.session import SessionLocal
-from app.knowledge.bulk import KnowledgeCandidate, extract_bulk_candidates, save_bulk_candidates
+from app.knowledge.bulk import (
+    KnowledgeCandidate,
+    extract_bulk_candidates,
+    save_bulk_candidates,
+    source_content_hash,
+)
 from app.security.owner import OwnerGuard
 from app.telegram.callback_safety import safe_callback_answer
+from app.telegram.professional_copy import knowledge_type_text
 
 router = Router(name="bulk_knowledge_ui")
 settings = get_settings()
 guard = OwnerGuard(settings.owner_telegram_id)
+logger = logging.getLogger(__name__)
 
 _ALLOWED_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".yaml", ".yml"}
 _MAX_FILE_BYTES = 4 * 1024 * 1024
@@ -75,7 +83,7 @@ def _preview_text(candidates: list[KnowledgeCandidate], visibility: str, source_
         "",
     ]
     for index, item in enumerate(candidates[:24], start=1):
-        lines.append(f"{index}. [{item.type}] {item.title}")
+        lines.append(f"{index}. {knowledge_type_text(item.type)} — {item.title}")
     if len(candidates) > 24:
         lines.append(f"… و{len(candidates) - 24} معلومة إضافية")
     lines.extend(
@@ -181,7 +189,9 @@ async def bulk_receive(message: Message, state: FSMContext, bot: Bot) -> None:
             )
             return
         if not settings.text_ai_configured:
-            await message.answer("DeepSeek غير مهيأ حاليًا، لذلك لا يمكن تحليل التغذية الجماعية.")
+            await message.answer(
+                "خدمة تنظيم المعرفة غير مهيأة حاليًا، لذلك لا يمكن تحليل التغذية الجماعية."
+            )
             return
 
         wait = await message.answer("🧠 جارٍ تحليل البيانات وتقسيمها إلى معرفة منظمة…")
@@ -193,15 +203,20 @@ async def bulk_receive(message: Message, state: FSMContext, bot: Bot) -> None:
         await state.update_data(
             bulk_candidates=[item.to_dict() for item in candidates],
             bulk_source_name=source_name,
+            bulk_source_hash=source_content_hash(source_text),
         )
         await state.set_state(None)
         await wait.edit_text(
             _preview_text(candidates, visibility, source_name),
             reply_markup=_preview_keyboard(),
         )
-    except Exception as exc:
+    except Exception:
+        logger.exception("bulk_knowledge_analysis_failed source=%s", source_name)
         await state.clear()
-        await message.answer(f"تعذر تحليل المصدر: {exc}", reply_markup=_back_keyboard())
+        await message.answer(
+            "تعذر تحليل المصدر حاليًا. لم تُحفظ أي معلومة؛ يمكنك المحاولة مرة أخرى.",
+            reply_markup=_back_keyboard(),
+        )
 
 
 @router.callback_query(F.data == "bulk:commit")
@@ -213,6 +228,7 @@ async def bulk_commit(callback: CallbackQuery, state: FSMContext) -> None:
     raw_candidates = data.get("bulk_candidates") or []
     visibility = str(data.get("bulk_visibility") or "INTERNAL")
     source_name = str(data.get("bulk_source_name") or "bulk")[:120]
+    source_hash = str(data.get("bulk_source_hash") or "")
     candidates = [
         KnowledgeCandidate(
             type=str(item.get("type") or "GENERAL"),
@@ -229,18 +245,28 @@ async def bulk_commit(callback: CallbackQuery, state: FSMContext) -> None:
 
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        ids = save_bulk_candidates(
+        saved = save_bulk_candidates(
             session,
             owner=owner,
             candidates=candidates,
             visibility=visibility,
             source=f"OWNER_BULK:{source_name}",
+            source_hash=source_hash,
+            source_name=source_name,
         )
         session.commit()
     await state.clear()
+    if saved.duplicate_of_batch_id is not None:
+        if callback.message:
+            await callback.message.edit_text(
+                "ℹ️ هذا المصدر محفوظ مسبقًا، لذلك لم أضف نسخة مكررة.",
+                reply_markup=_back_keyboard(),
+            )
+        await safe_callback_answer(callback, "المصدر موجود مسبقًا")
+        return
     if callback.message:
         await callback.message.edit_text(
-            f"✅ تم تغذية عقل السكرتير وحفظ {len(ids)} معلومة دفعة واحدة.",
+            f"✅ تم حفظ {len(saved.item_ids)} من المعلومات ضمن الدفعة #{saved.batch_id}.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="📚 عرض المعرفة", callback_data="brain:knowledge")],

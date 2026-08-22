@@ -6,12 +6,22 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from app.config import get_settings
-from app.db.models import KnowledgeItem
+from app.db.models import KnowledgeBatch, KnowledgeItem
 from app.db.repositories import OwnerRepository
 from app.db.session import SessionLocal
-from app.knowledge.admin import list_knowledge
+from app.knowledge.admin import (
+    list_knowledge,
+    list_knowledge_batches,
+    rollback_knowledge_batch,
+    supersede_knowledge,
+)
 from app.security.owner import OwnerGuard
 from app.telegram.callback_safety import safe_callback_answer
+from app.telegram.professional_copy import (
+    knowledge_source_text,
+    knowledge_type_text,
+    knowledge_visibility_text,
+)
 
 router = Router(name="knowledge_manage_ui")
 settings = get_settings()
@@ -29,7 +39,8 @@ def _is_owner(user_id: int | None) -> bool:
 
 def _list_keyboard(rows: list[KnowledgeItem]) -> InlineKeyboardMarkup:
     keyboard: list[list[InlineKeyboardButton]] = [
-        [InlineKeyboardButton(text="➕ إضافة معلومة", callback_data="brain:knowledge:add")]
+        [InlineKeyboardButton(text="➕ إضافة معلومة", callback_data="brain:knowledge:add")],
+        [InlineKeyboardButton(text="📦 دفعات المصادر", callback_data="knowledge:batches")],
     ]
     for row in rows[:12]:
         icon = {"PUBLIC": "🌍", "INTERNAL": "🏠", "PRIVATE": "🔒"}.get(row.visibility, "•")
@@ -50,7 +61,9 @@ def _item_keyboard(item_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="✏️ العنوان", callback_data=f"knowledge:title:{item_id}"),
-                InlineKeyboardButton(text="📝 المحتوى", callback_data=f"knowledge:content:{item_id}"),
+                InlineKeyboardButton(
+                    text="📝 المحتوى", callback_data=f"knowledge:content:{item_id}"
+                ),
             ],
             [
                 InlineKeyboardButton(
@@ -65,15 +78,13 @@ def _item_keyboard(item_id: int) -> InlineKeyboardMarkup:
 
 
 def _render_item(row: KnowledgeItem) -> str:
-    visibility = {
-        "PUBLIC": "🌍 عام — يمكن قوله للعميل",
-        "INTERNAL": "🏠 داخلي — يوجّه السكرتير",
-        "PRIVATE": "🔒 خاص — لا يدخل إلى AI",
-    }.get(row.visibility, row.visibility)
+    visibility = knowledge_visibility_text(row.visibility)
     return (
         f"📚 المعلومة #{row.id}\n\n"
-        f"النوع: {row.type}\n"
+        f"النوع: {knowledge_type_text(row.type)}\n"
         f"الاستخدام: {visibility}\n"
+        f"النسخة: {row.version or 1}\n"
+        f"المصدر: {knowledge_source_text(row.source)}\n"
         f"العنوان: {row.title}\n\n"
         f"المحتوى:\n{row.content[:2800]}"
     )
@@ -158,14 +169,29 @@ async def knowledge_title_save(message: Message, state: FSMContext) -> None:
             await state.clear()
             await message.answer("لم أجد المعلومة.")
             return
-        row.title = title[:255]
+        replacement = supersede_knowledge(
+            session,
+            owner_id=row.owner_id,
+            knowledge_id=row.id,
+            title=title[:255],
+        )
+        if replacement is None:
+            await state.clear()
+            await message.answer("تعذر حفظ النسخة الجديدة من المعلومة.")
+            return
+        new_item_id = replacement.id
         session.commit()
     await state.clear()
     await message.answer(
-        "✅ تم تعديل العنوان.",
+        "✅ تم حفظ العنوان كنسخة جديدة مع الاحتفاظ بسجل النسخة السابقة.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ عرض المعلومة", callback_data=f"knowledge:item:{item_id}")]
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ عرض المعلومة",
+                        callback_data=f"knowledge:item:{new_item_id}",
+                    )
+                ]
             ]
         ),
     )
@@ -204,14 +230,29 @@ async def knowledge_content_save(message: Message, state: FSMContext) -> None:
             await state.clear()
             await message.answer("لم أجد المعلومة.")
             return
-        row.content = content
+        replacement = supersede_knowledge(
+            session,
+            owner_id=row.owner_id,
+            knowledge_id=row.id,
+            content=content,
+        )
+        if replacement is None:
+            await state.clear()
+            await message.answer("تعذر حفظ النسخة الجديدة من المعلومة.")
+            return
+        new_item_id = replacement.id
         session.commit()
     await state.clear()
     await message.answer(
-        "✅ تم تعديل المحتوى.",
+        "✅ تم حفظ المحتوى كنسخة جديدة مع الاحتفاظ بسجل النسخة السابقة.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ عرض المعلومة", callback_data=f"knowledge:item:{item_id}")]
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ عرض المعلومة",
+                        callback_data=f"knowledge:item:{new_item_id}",
+                    )
+                ]
             ]
         ),
     )
@@ -239,7 +280,11 @@ async def knowledge_visibility(callback: CallbackQuery) -> None:
         text = _render_item(row)
     if callback.message:
         await callback.message.edit_text(text[:4000], reply_markup=_item_keyboard(item_id))
-    await safe_callback_answer(callback, f"تم تغيير المستوى إلى {new_visibility}")
+    label = {"PUBLIC": "عام", "INTERNAL": "داخلي", "PRIVATE": "خاص"}.get(
+        new_visibility,
+        "المستوى المحدد",
+    )
+    await safe_callback_answer(callback, f"تم تغيير مستوى الاستخدام إلى: {label}")
 
 
 @router.callback_query(F.data.startswith("knowledge:delete:"))
@@ -269,3 +314,106 @@ async def knowledge_delete(callback: CallbackQuery) -> None:
             ),
         )
     await safe_callback_answer(callback, "تم الحذف")
+
+
+def _batch_keyboard(rows: list[KnowledgeBatch]) -> InlineKeyboardMarkup:
+    keyboard: list[list[InlineKeyboardButton]] = []
+    for row in rows:
+        status = "✅" if row.status == "ACTIVE" else "↩️"
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{status} #{row.id} {row.source_name[:28]}",
+                    callback_data=f"knowledge:batch:{row.id}",
+                )
+            ]
+        )
+    keyboard.append([InlineKeyboardButton(text="⬅️ المعرفة", callback_data="brain:knowledge")])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+@router.callback_query(F.data == "knowledge:batches")
+async def knowledge_batches(callback: CallbackQuery) -> None:
+    if not _is_owner(callback.from_user.id):
+        await safe_callback_answer(callback)
+        return
+    with SessionLocal() as session:
+        owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+        rows = list_knowledge_batches(session, owner_id=owner.id)
+    text = (
+        "📦 دفعات المصادر\n\nاختر دفعة لمراجعتها أو التراجع عنها بالكامل."
+        if rows
+        else "📦 دفعات المصادر\n\nلا توجد دفعات جماعية محفوظة بعد."
+    )
+    if callback.message:
+        await callback.message.edit_text(text, reply_markup=_batch_keyboard(rows))
+    await safe_callback_answer(callback)
+
+
+@router.callback_query(F.data.startswith("knowledge:batch:"))
+async def knowledge_batch(callback: CallbackQuery) -> None:
+    if not _is_owner(callback.from_user.id):
+        await safe_callback_answer(callback)
+        return
+    raw_id = (callback.data or "").rsplit(":", 1)[-1]
+    if not raw_id.isdigit():
+        await safe_callback_answer(callback, "لم أتمكن من تحديد الدفعة.", show_alert=True)
+        return
+    batch_id = int(raw_id)
+    with SessionLocal() as session:
+        owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+        row = session.get(KnowledgeBatch, batch_id)
+        if row is None or row.owner_id != owner.id:
+            await safe_callback_answer(callback, "لم أجد هذه الدفعة.", show_alert=True)
+            return
+        active = row.status == "ACTIVE"
+        text = (
+            f"📦 دفعة المصدر #{row.id}\n\n"
+            f"المصدر: {row.source_name}\n"
+            f"عدد المعلومات: {row.item_count}\n"
+            f"مستوى الاستخدام: {knowledge_visibility_text(row.visibility)}\n"
+            f"الحالة: {'فعالة' if active else 'تم التراجع عنها'}"
+        )
+    buttons = []
+    if active:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text="↩️ التراجع عن الدفعة",
+                    callback_data=f"knowledge:batch_rollback:{batch_id}",
+                )
+            ]
+        )
+    buttons.append([InlineKeyboardButton(text="⬅️ الدفعات", callback_data="knowledge:batches")])
+    if callback.message:
+        await callback.message.edit_text(
+            text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        )
+    await safe_callback_answer(callback)
+
+
+@router.callback_query(F.data.startswith("knowledge:batch_rollback:"))
+async def knowledge_batch_rollback(callback: CallbackQuery) -> None:
+    if not _is_owner(callback.from_user.id):
+        await safe_callback_answer(callback)
+        return
+    raw_id = (callback.data or "").rsplit(":", 1)[-1]
+    if not raw_id.isdigit():
+        await safe_callback_answer(callback, "لم أتمكن من تحديد الدفعة.", show_alert=True)
+        return
+    batch_id = int(raw_id)
+    with SessionLocal() as session:
+        owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+        removed = rollback_knowledge_batch(session, owner_id=owner.id, batch_id=batch_id)
+        session.commit()
+    if callback.message:
+        await callback.message.edit_text(
+            f"↩️ تم التراجع عن الدفعة وإيقاف {removed} من المعلومات. لم تُحذف الدفعات الأخرى.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="⬅️ الدفعات", callback_data="knowledge:batches")]
+                ]
+            ),
+        )
+    await safe_callback_answer(callback, "تم التراجع عن الدفعة")

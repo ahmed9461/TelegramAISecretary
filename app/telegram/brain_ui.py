@@ -19,6 +19,7 @@ from app.db.session import SessionLocal
 from app.knowledge.admin import add_knowledge, delete_knowledge, list_knowledge
 from app.security.owner import OwnerGuard
 from app.telegram.owner_ui import main_admin_keyboard
+from app.telegram.professional_copy import knowledge_type_text, policy_action_text
 
 router = Router(name="secretary_brain_ui")
 settings = get_settings()
@@ -192,7 +193,8 @@ async def brain_home(callback: CallbackQuery, state: FSMContext) -> None:
         f"المعرفة: {knowledge_count}\n"
         f"ذاكرة الأشخاص: {counts['memories']}\n"
         f"قواعد الرد: {counts['policies']}\n\n"
-        "كل هذه البيانات قابلة للتغيير بدون تعديل الكود، لذلك تستطيع تغيير نشاطك أو خدماتك لاحقًا بحرية.",
+        "كل هذه البيانات قابلة للتغيير بدون تعديل الكود، لذلك تستطيع تغيير نشاطك أو "
+        "خدماتك لاحقًا بحرية.",
         _brain_home_keyboard(),
     )
 
@@ -207,13 +209,16 @@ async def brain_profile(callback: CallbackQuery, state: FSMContext) -> None:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
         profile = get_or_create_profile(session, owner_id=owner.id)
         session.commit()
+        language_label = (
+            profile.language if profile.language and profile.language != "AUTO" else "تلقائية"
+        )
         text = (
             "🏢 هوية السكرتير\n\n"
             f"الاسم/العلامة: {profile.display_name or '—'}\n"
             f"النشاط: {profile.activity_description or '—'}\n"
             f"المجال: {profile.industry or '—'}\n"
             f"أسلوب الرد: {profile.reply_style or '—'}\n"
-            f"اللغة: {profile.language or 'AUTO'}\n"
+            f"اللغة: {language_label}\n"
             f"النبرة: {profile.tone or '—'}\n"
             f"تعليمات خاصة: {profile.custom_instructions or '—'}"
         )
@@ -299,9 +304,11 @@ async def brain_knowledge(callback: CallbackQuery, state: FSMContext) -> None:
         lines.append("لا توجد معلومات محفوظة بعد.")
     else:
         for row in rows:
-            visibility = {"PUBLIC": "🌍", "INTERNAL": "🏠", "PRIVATE": "🔒"}.get(row.visibility, "•")
-            lines.append(f"{visibility} #{row.id} [{row.type}] {row.title}")
-    lines.append("\n🔒 المعلومات الخاصة لا تُرسل إلى نموذج الذكاء الاصطناعي.")
+            visibility = {"PUBLIC": "🌍", "INTERNAL": "🏠", "PRIVATE": "🔒"}.get(
+                row.visibility, "•"
+            )
+            lines.append(f"{visibility} #{row.id} {knowledge_type_text(row.type)} — {row.title}")
+    lines.append("\n🔒 المعلومات الخاصة لا تُشارك مع خدمة الصياغة.")
     await _edit(callback, "\n".join(lines)[:4000], _knowledge_keyboard(rows))
 
 
@@ -311,7 +318,11 @@ async def brain_knowledge_add(callback: CallbackQuery, state: FSMContext) -> Non
         await callback.answer()
         return
     await state.clear()
-    await _edit(callback, "اختر نوع المعلومة. الأنواع مجرد تنظيم ويمكن تغيير نشاطك لاحقًا:", _knowledge_categories_keyboard())
+    await _edit(
+        callback,
+        "اختر نوع المعلومة. الأنواع مجرد تنظيم ويمكن تغيير نشاطك لاحقًا:",
+        _knowledge_categories_keyboard(),
+    )
 
 
 @router.callback_query(F.data.startswith("brain:knowledge:cat:"))
@@ -323,7 +334,10 @@ async def brain_knowledge_category(callback: CallbackQuery, state: FSMContext) -
     await state.update_data(knowledge_category=category)
     await _edit(
         callback,
-        "اختر مستوى استخدام المعلومة:\n\n🌍 عام: يمكن قوله للعميل\n🏠 داخلي: يوجّه السكرتير ولا يُكشف كسياسة داخلية\n🔒 خاص: لك فقط ولا يدخل للذكاء الاصطناعي",
+        "اختر مستوى استخدام المعلومة:\n\n"
+        "🌍 عام: يمكن قوله للعميل\n"
+        "🏠 داخلي: يوجّه السكرتير ولا يُكشف كسياسة داخلية\n"
+        "🔒 خاص: لك فقط ولا يُشارك مع خدمة الصياغة",
         _visibility_keyboard(),
     )
 
@@ -414,8 +428,9 @@ async def brain_memory(callback: CallbackQuery, state: FSMContext) -> None:
         callback,
         "👥 ذاكرة الأشخاص\n\n"
         f"الذواكر المحفوظة: {counts['memories']}\n\n"
-        "كل شخص له ذاكرة منفصلة. الملاحظات الخاصة لا تدخل للذكاء الاصطناعي، ويمكن تعطيل مشاركة الذاكرة لكل شخص. "
-        "واجهة تحرير الأشخاص التفصيلية ستبقى مستقلة حتى لا تختلط بقاعدة المعرفة العامة.",
+        "كل شخص له ذاكرة منفصلة. الملاحظات الخاصة لا تُشارك مع خدمة الصياغة، ويمكن "
+        "تعطيل مشاركة الذاكرة لكل شخص. واجهة تحرير الأشخاص التفصيلية مستقلة حتى لا "
+        "تختلط بقاعدة المعرفة العامة.",
         _back_home_keyboard(),
     )
 
@@ -434,7 +449,10 @@ async def brain_policies(callback: CallbackQuery, state: FSMContext) -> None:
         lines.append("لا توجد قواعد مخصصة بعد. سيظل نظام الأمان الافتراضي هو الحاكم.")
     else:
         for row in rows[:12]:
-            lines.append(f"#{row.id} [{row.action}] {row.name}: {row.description[:160]}")
+            lines.append(
+                f"#{row.id} — {row.name} — {policy_action_text(row.action)}\n"
+                f"{row.description[:160]}"
+            )
     lines.append("\nالقواعد المخصصة لا تستطيع تجاوز قيود الأمان الأساسية مثل المخاطر العالية.")
     await _edit(callback, "\n".join(lines)[:4000], _policy_keyboard())
 
@@ -474,7 +492,9 @@ async def brain_policy_description(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(policy_description=description)
     await state.set_state(None)
-    await message.answer("اختر الإجراء الافتراضي لهذه القاعدة:", reply_markup=_policy_action_keyboard())
+    await message.answer(
+        "اختر الإجراء الافتراضي لهذه القاعدة:", reply_markup=_policy_action_keyboard()
+    )
 
 
 @router.callback_query(F.data.startswith("brain:policy:action:"))

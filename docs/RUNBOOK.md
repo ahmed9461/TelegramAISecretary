@@ -1,4 +1,4 @@
-# Runbook — Current M6
+# Runbook — Current M7
 
 ## المتطلبات
 
@@ -56,6 +56,8 @@ Migrations المعروفة حاليًا:
 0001_initial
 0002_stability
 0003_secretary_brain
+0004_m7_knowledge_operations
+0005_m7_approval_provenance
 ```
 
 ## الاختبارات
@@ -64,16 +66,10 @@ Migrations المعروفة حاليًا:
 pytest
 ```
 
-آخر نتيجة محلية موثقة بعد اختبار network fault injection:
+آخر نتيجة محلية موثقة لـM7:
 
 ```text
-60 passed, 1 warning
-```
-
-آخر نتيجة موثقة على CI البعيد للفرع M6 الحالي قبل هذا diff:
-
-```text
-56 passed, 1 warning
+72 passed, 1 warning
 ```
 
 التحذير الحالي StarletteDeprecationWarning متعلق بـFastAPI TestClient/httpx ولا يمنع نجاح suite.
@@ -81,8 +77,18 @@ pytest
 للتجميع:
 
 ```powershell
-python -m compileall -q app tests
+python -m compileall -q app scripts tests
 ```
+
+لتقييم جودة الاسترجاع بصورة مستقلة:
+
+```powershell
+python scripts/evaluate_retrieval.py
+```
+
+النتيجة الحالية: `14/14 top-1`.
+
+تمت بروفة M7 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند `0005`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار؛ استخدم قاعدة مؤقتة صريحة وتأكد من حذفها بعد البروفة.
 
 لاختبار حد retry دون قطع شبكة حقيقية أو المخاطرة بتكرار رد عميل:
 
@@ -100,18 +106,18 @@ python -m app.telegram.run
 
 بعد التشغيل من حساب المالك أرسل `/start` عند الحاجة لفتح لوحة الإدارة.
 
-## تحديث النسخة المحلية من فرع M6
+## تحديث النسخة المحلية من فرع M7
 
 ```powershell
 cd D:\Desktop\telegram_ai_secretary_clean
-git switch m6-secretary-learning
+git switch codex/m7-retrieval-quality
 git pull
 .\.venv\Scripts\Activate.ps1
 pytest
 python -m app.telegram.run
 ```
 
-M6 الحالية لا تحتاج migration إضافية فوق `0003` ما لم يضاف migration لاحقًا فعلًا.
+يجب أن يعرض `alembic current` الرأس `0005` قبل تشغيل كود M7.
 
 ## اختبار حي أساسي
 
@@ -140,6 +146,17 @@ M6 الحالية لا تحتاج migration إضافية فوق `0003` ما لم
 ```text
 TXT, MD, CSV, JSON, YAML, YML
 ```
+
+اختبار M7 يضيف التحقق من رفض الاستيراد المطابق، ظهور الدفعة في إدارة المعرفة، والتراجع عن الدفعة مع اختفاء عناصرها الفعالة من الاسترجاع.
+
+## اختبار التعارض والمصادر
+
+1. أنشئ معلومتين اصطناعيتين فعالتين بالنوع والعنوان نفسيهما ومحتوى مختلف.
+2. اسأل عنهما من حساب الاختبار.
+3. تحقق من أن الرد لا يرسل تلقائيًا وأن بطاقة المالك تشرح التعارض بصياغة عربية.
+4. افتح المصادر وتحقق من المصدر والنسخة ووجود التعارض.
+5. أزل/تراجع عن المصدر الاصطناعي، ثم تأكد أن الاسترجاع عاد إلى حقيقة واحدة.
+6. نظف جميع البيانات الاصطناعية فقط وتأكد أن البيانات السابقة لم تتغير.
 
 ## اختبار Rich + Contextual Buttons
 
@@ -182,4 +199,4 @@ Handlers الحديثة تستخدم safe callback acknowledgment؛ الخطأ �
 
 ## قبل الدمج إلى main
 
-نفذ الاختبارات الآلية والاختبار الحي للمزايا Telegram-dependent. لا تدمج M6 لمجرد أن CI أخضر إذا فشل behavior الحقيقي في Business chat.
+نفذ الاختبارات الآلية والاختبار الحي للمزايا Telegram-dependent. لا تدمج milestone لمجرد أن CI أخضر إذا فشل behavior الحقيقي في Business chat.

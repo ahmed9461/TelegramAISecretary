@@ -10,6 +10,7 @@ def choose_action(
     confidence: Confidence,
     has_grounding: bool,
     has_public_grounding: bool | None = None,
+    has_conflicting_grounding: bool = False,
 ) -> Decision:
     """Apply local safety policy after model classification.
 
@@ -19,7 +20,11 @@ def choose_action(
     """
     public_grounding = has_grounding if has_public_grounding is None else has_public_grounding
 
-    if state in {ConversationState.EXCLUDED, ConversationState.HUMAN_TAKEOVER, ConversationState.PAUSED}:
+    if state in {
+        ConversationState.EXCLUDED,
+        ConversationState.HUMAN_TAKEOVER,
+        ConversationState.PAUSED,
+    }:
         return Decision(
             intent=intent,
             risk=risk,
@@ -49,6 +54,16 @@ def choose_action(
             needs_owner=True,
             allowed_to_answer=False,
             reason_code="NO_GROUNDING",
+        )
+
+    if has_conflicting_grounding:
+        return Decision(
+            intent=intent,
+            risk=risk,
+            action=DecisionAction.REQUIRE_APPROVAL,
+            confidence=confidence,
+            needs_owner=True,
+            reason_code="KNOWLEDGE_CONFLICT",
         )
 
     if min(confidence.intent, confidence.answer, confidence.policy) < 0.7:

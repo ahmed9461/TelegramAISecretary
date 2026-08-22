@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.db.repositories import OwnerRepository
 from app.db.session import SessionLocal
 from app.security.owner import OwnerGuard
+from app.telegram.professional_copy import policy_action_text, policy_scope_text
 
 router = Router(name="policy_manage_ui")
 settings = get_settings()
@@ -75,8 +76,8 @@ def _render(row: ResponsePolicy) -> str:
         f"🎛️ قاعدة الرد #{row.id}\n\n"
         f"الاسم: {row.name}\n"
         f"الحالة: {'🟢 مفعلة' if row.enabled else '⚪ معطلة'}\n"
-        f"الإجراء: {row.action}\n"
-        f"النطاق: {row.scope}\n"
+        f"الإجراء: {policy_action_text(row.action)}\n"
+        f"النطاق: {policy_scope_text(row.scope)}\n"
         f"الأولوية: {row.priority}\n\n"
         f"الوصف:\n{row.description[:2500]}\n\n"
         "هذه القاعدة لا تستطيع تجاوز قيود الأمان الأساسية."
@@ -165,7 +166,11 @@ async def policy_name_save(message: Message, state: FSMContext) -> None:
         "✅ تم تعديل اسم القاعدة.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ عرض القاعدة", callback_data=f"policy:item:{policy_id}")]
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ عرض القاعدة", callback_data=f"policy:item:{policy_id}"
+                    )
+                ]
             ]
         ),
     )
@@ -212,7 +217,11 @@ async def policy_description_save(message: Message, state: FSMContext) -> None:
         "✅ تم تعديل وصف القاعدة.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ عرض القاعدة", callback_data=f"policy:item:{policy_id}")]
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ عرض القاعدة", callback_data=f"policy:item:{policy_id}"
+                    )
+                ]
             ]
         ),
     )

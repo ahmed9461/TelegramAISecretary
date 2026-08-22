@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ from app.db.models import Approval, BusinessConnection, Contact, Conversation, M
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +25,9 @@ class IngestResult:
 
 class OwnerRepository:
     @staticmethod
-    def get_or_create(session: Session, telegram_user_id: int, *, display_name: str = "Owner") -> Owner:
+    def get_or_create(
+        session: Session, telegram_user_id: int, *, display_name: str = "Owner"
+    ) -> Owner:
         owner = session.scalar(select(Owner).where(Owner.telegram_user_id == telegram_user_id))
         if owner:
             if display_name and display_name != "Owner":
@@ -125,7 +127,9 @@ class ConversationRepository:
             contact.display_name = sender_name or contact.display_name
             contact.username = username
 
-        conversation = ConversationRepository.get_by_chat(session, owner_id=owner.id, chat_id=chat_id)
+        conversation = ConversationRepository.get_by_chat(
+            session, owner_id=owner.id, chat_id=chat_id
+        )
         if conversation is None:
             default_state = (
                 ConversationState.AI_AUTO.value
@@ -180,7 +184,9 @@ class ConversationRepository:
         telegram_message_id: int,
         new_text: str | None,
     ) -> Conversation | None:
-        conversation = ConversationRepository.get_by_chat(session, owner_id=owner_id, chat_id=chat_id)
+        conversation = ConversationRepository.get_by_chat(
+            session, owner_id=owner_id, chat_id=chat_id
+        )
         if conversation is None:
             return None
         row = session.scalar(
@@ -208,7 +214,9 @@ class ConversationRepository:
         chat_id: int,
         telegram_message_ids: list[int],
     ) -> Conversation | None:
-        conversation = ConversationRepository.get_by_chat(session, owner_id=owner_id, chat_id=chat_id)
+        conversation = ConversationRepository.get_by_chat(
+            session, owner_id=owner_id, chat_id=chat_id
+        )
         if conversation is None:
             return None
         rows = list(
@@ -280,6 +288,7 @@ class ApprovalRepository:
         trigger_message_id: int | None,
         candidate_response: str,
         reason: str,
+        context: dict | None = None,
         ttl_hours: int = 24,
     ) -> Approval:
         ApprovalRepository.invalidate_pending(session, conversation.id, status="SUPERSEDED")
@@ -289,6 +298,7 @@ class ApprovalRepository:
             conversation_revision=conversation.revision,
             candidate_response=candidate_response,
             reason=reason,
+            context_json=dict(context or {}),
             status="PENDING",
             expires_at=utcnow() + timedelta(hours=max(1, ttl_hours)),
         )
@@ -344,7 +354,9 @@ class ApprovalRepository:
         return session.get(Approval, approval_id)
 
     @staticmethod
-    def mark_sent(session: Session, approval_id: int, *, telegram_message_id: int | None = None) -> None:
+    def mark_sent(
+        session: Session, approval_id: int, *, telegram_message_id: int | None = None
+    ) -> None:
         session.execute(
             update(Approval)
             .where(Approval.id == approval_id, Approval.status == "SENDING")
