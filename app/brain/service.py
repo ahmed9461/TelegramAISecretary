@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.brain.models import BusinessProfile, ContactMemory, ResponsePolicy
 from app.db.models import Contact
-
 
 PROFILE_FIELDS = {
     "display_name",
@@ -56,6 +56,10 @@ def upsert_contact_memory(
     preferences_json: dict | None = None,
     private_notes: str | None = None,
     share_with_ai: bool | None = None,
+    provenance_json: dict | None = None,
+    confidence_json: dict | None = None,
+    retention_until: datetime | None = None,
+    last_reviewed_at: datetime | None = None,
 ) -> ContactMemory:
     row = get_contact_memory(session, contact_id=contact_id)
     if row is None:
@@ -74,6 +78,14 @@ def upsert_contact_memory(
         row.private_notes = private_notes.strip()
     if share_with_ai is not None:
         row.share_with_ai = bool(share_with_ai)
+    if provenance_json is not None:
+        row.provenance_json = dict(provenance_json)
+    if confidence_json is not None:
+        row.confidence_json = dict(confidence_json)
+    if retention_until is not None:
+        row.retention_until = retention_until
+    if last_reviewed_at is not None:
+        row.last_reviewed_at = last_reviewed_at
     session.flush()
     return row
 
@@ -137,6 +149,12 @@ def profile_for_ai(profile: BusinessProfile | None) -> dict:
 def memory_for_ai(memory: ContactMemory | None, *, contact_memory_allowed: bool) -> dict:
     if memory is None or not memory.share_with_ai or not contact_memory_allowed:
         return {}
+    if memory.retention_until is not None:
+        retention_until = memory.retention_until
+        if retention_until.tzinfo is None:
+            retention_until = retention_until.replace(tzinfo=UTC)
+        if retention_until <= datetime.now(UTC):
+            return {}
     # private_notes is deliberately excluded from the returned structure.
     return {
         "summary": memory.summary,

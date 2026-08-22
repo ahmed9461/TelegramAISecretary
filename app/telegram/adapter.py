@@ -67,12 +67,20 @@ class AiogramTelegramAdapter:
         attach_default_menu: bool = True,
         native_rich: bool = True,
         intent: str = "",
+        feedback_approval_id: int | None = None,
     ) -> int:
         if reply_markup is None and attach_default_menu:
             reply_markup = self._default_reply_markup(
                 chat_id=chat_id,
                 reply_text=text,
                 intent=intent,
+            )
+        if feedback_approval_id is not None:
+            from app.telegram.feedback_ui import append_feedback_row
+
+            reply_markup = append_feedback_row(
+                reply_markup,
+                approval_id=feedback_approval_id,
             )
         rendered = render_native_rich(text) if native_rich else None
         message = await self.bot.send_message(

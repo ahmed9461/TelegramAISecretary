@@ -4,15 +4,17 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M7 — Retrieval Quality & Knowledge Operations** في الفرع `codex/m7-retrieval-quality`. اندمج M6 في `main` عبر PR #2، واجتازت M7 بوابتها الحية وCI على Python 3.12/3.13؛ دمج PR #3 قيد الإغلاق.
+التطوير الحالي على **M8 — Memory Intelligence & Feedback** في الفرع `codex/m8-memory-intelligence`. اندمج M7 في `main` عبر PR #3، واجتازت M8 بوابتها المحلية وTelegram الحية؛ PR/CI والدمج قيد الإغلاق.
 
-آخر gate محلي موثق لـM7:
+آخر gate محلي موثق لـM8:
 
 ```text
 retrieval evaluation: 14/14 top-1
 Ruff correctness gate: PASS
 compileall: PASS
-pytest: 72 passed, 1 warning
+pytest: 83 passed, 1 warning
+PostgreSQL head: 0006
+isolated migration rehearsal: PASS
 ```
 
 ## ما يعمل الآن
@@ -38,6 +40,9 @@ pytest: 72 passed, 1 warning
 - دفعات معرفة قابلة للتراجع، منع استيراد المصدر نفسه، ونسخ تاريخية عند التعديل.
 - مصدر approval محفوظ وقت الإنشاء وقابل للتدقيق بعد تغير المعرفة.
 - رسائل مهنية لا تعرض أكواد السياسة أو أسماء المزودين للمستخدم.
+- اقتراح ذاكرة من المحادثة لا يُحفظ قبل اعتماد المالك، مع provenance/confidence/retention.
+- تنقية محلية للأسرار والبيانات الحساسة، وتحرير/تصدير/مسح ذاكرة من Telegram.
+- تقييمات 1–5 بتكرار قابل للضبط ولوحة رضا للمالك، دون تعلم تلقائي.
 
 ## Quick Start — Windows
 
@@ -96,6 +101,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - [`docs/ACCEPTANCE_CRITERIA.md`](docs/ACCEPTANCE_CRITERIA.md) — معايير القبول.
 - [`docs/M6_SECRETARY_LEARNING.md`](docs/M6_SECRETARY_LEARNING.md) — تفاصيل M6.
 - [`docs/M7_RETRIEVAL_QUALITY.md`](docs/M7_RETRIEVAL_QUALITY.md) — تفاصيل M7.
+- [`docs/M8_MEMORY_INTELLIGENCE.md`](docs/M8_MEMORY_INTELLIGENCE.md) — تفاصيل M8.
 
 ## قاعدة المشروع
 

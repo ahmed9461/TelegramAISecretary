@@ -20,6 +20,7 @@ Brain Context
   app/interface/*
   app/intents/*
   app/flows/*
+  app/feedback/*
         ↓
 AI Providers
   app/ai/*
@@ -68,6 +69,14 @@ BusinessProfile يحدد الهوية والنبرة والتعليمات الع
 ## Bulk Ingestion
 
 `app/knowledge/bulk.py` يستقبل مصدرًا كبيرًا، يقسمه، يطلب من extractor إنتاج records منظمة، يطبع/ينظف النتائج ويزيل التكرار، ثم يحفظها فقط بعد معاينة وموافقة المالك من `bulk_knowledge_ui.py`. كل commit في M7 يرتبط بـKnowledgeBatch وبصمة محتوى، ويمكن التراجع عنه دون حذف التاريخ.
+
+## Memory Intelligence
+
+`app/memory/service.py` يفصل extraction عن commit. DeepSeek يعيد MemoryProposal، ثم تنقيه طبقة محلية وتحفظه في MemorySuggestion. اعتماد المالك وحده يدمجه في ContactMemory ويسجل provenance/confidence/retention. Telegram UI لا يكتب ذاكرة مشتقة مباشرة.
+
+## Feedback
+
+`app/feedback/service.py` يقرر التكرار من الإعدادات ويتحقق من مستلم Approval ويسجل تقييمًا واحدًا قابلًا للتحديث. Telegram Adapter يضيف صف التقييم مع المحافظة على القائمة الديناميكية. الإحصاءات تقرأ Feedback ولا تعيد توجيهه إلى AI.
 
 ## Dynamic Interface
 

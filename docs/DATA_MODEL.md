@@ -33,7 +33,10 @@
 سجل عملية استيراد معرفة: المالك، اسم/نوع المصدر، visibility، بصمة المحتوى، عدد العناصر، الحالة وmetadata. يسمح بمنع استيراد المصدر نفسه والتراجع عن عناصر دفعة كاملة دون حذف التاريخ.
 
 ### contact_memories
-ذاكرة معزولة لشخص واحد: summary، facts_json، preferences_json، private_notes وshare_with_ai.
+ذاكرة معزولة لشخص واحد: summary، facts_json، preferences_json، private_notes وshare_with_ai، مع `provenance_json` و`confidence_json` و`retention_until` و`last_reviewed_at`. الذاكرة المنتهية لا تدخل سياق AI.
+
+### memory_suggestions
+اقتراح قابل للمراجعة مرتبط بالمالك والشخص والمحادثة والرسائل المصدر. يحتوي summary/facts/preferences والثقة والسبب وTTL وحالة `PENDING/APPROVED/REJECTED/SUPERSEDED/EXPIRED`. وجوده لا يعني أن ContactMemory تغيرت.
 
 ### response_policies
 قواعد المالك: name، description، scope، action، priority، conditions_json، constraints_json، enabled.
@@ -50,7 +53,7 @@
 سجل عمليات AI عندما يستخدمه المسار، لأغراض التتبع والتقييم.
 
 ### feedback
-مكان لتسجيل تغذية راجعة/تقييمات عند استخدامها.
+تقييم 1–5 مرتبط بالمالك والشخص والمحادثة وApproval واحد. القيد الفريد على approval يسمح للعميل بتحديث تقييم الرد نفسه دون إنشاء صفوف مكررة، والتحقق المحلي يقبل مستلم الرد فقط.
 
 ### audit_logs
 سجل تغييرات وأحداث إدارية ذات قيمة تدقيقية.
@@ -97,5 +100,6 @@
 - `0003_secretary_brain`
 - `0004_m7_knowledge_operations`
 - `0005_m7_approval_provenance`
+- `0006_m8_memory_intelligence`
 
 قبل إنشاء migration جديد: افحص رأس Alembic الحالي والموديلات الموجودة، ولا تنشئ جدولًا مكررًا لمفهوم موجود أصلًا.

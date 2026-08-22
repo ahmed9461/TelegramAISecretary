@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     message_debounce_seconds: float = 1.5
     context_message_limit: int = 12
     knowledge_top_k: int = 6
+    memory_retention_days: int = 365
+    memory_suggestion_ttl_hours: int = 72
+    feedback_buttons_enabled: bool = True
+    feedback_prompt_every_n_responses: int = 3
 
     deepseek_api_key: str = Field(default="", repr=False)
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -48,7 +52,6 @@ class Settings(BaseSettings):
     @property
     def telegram_configured(self) -> bool:
         return bool(self.telegram_bot_token and self.owner_telegram_id)
-
 
     @property
     def text_ai_configured(self) -> bool:

@@ -178,7 +178,7 @@ Ruff correctness gate: PASS
 
 ## M7 — Retrieval Quality & Knowledge Operations
 
-**Status: التنفيذ والاختبار الحي وCI مكتملة على `codex/m7-retrieval-quality`؛ دمج PR #3 قيد الإغلاق.**
+**Status: مكتمل ومندمج في `main` عبر PR #3.**
 
 ### Implemented
 
@@ -232,7 +232,44 @@ compileall: PASS
 pytest: PASS
 ```
 
-لا تسجل المرحلة مندمجة حتى تكتمل مراجعة ودمج PR #3.
+اكتمل CI النهائي ثم اندمج PR #3 في `main` بالـSHA `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
+
+## M8 — Memory Intelligence & Feedback
+
+**Status: التنفيذ والبوابة المحلية والحية مكتملة على `codex/m8-memory-intelligence`؛ PR/CI والدمج قيد الإغلاق.**
+
+### Implemented
+
+- جدول اقتراحات ذاكرة منفصل؛ لا يغيّر ContactMemory قبل اعتماد المالك.
+- summary/facts/preferences مع provenance وconfidence وretention ومراجعة يدوية.
+- استبعاد الذاكرة المنتهية أو غير المسموح بمشاركتها من سياق AI.
+- تنقية OTP/بطاقة/IBAN/API secrets/بيانات صحية في طبقة محلية مستقلة عن النموذج.
+- واجهة Telegram عربية للاقتراح والاعتماد/الرفض والتحرير والتصدير والمسح المؤكد.
+- Feedback 1–5 من مستلم الرد فقط، بتكرار قابل للضبط وإحصاءات رضا للمالك.
+- migration `0006` وأداة بروفة قاعدة مؤقتة قابلة لإعادة التشغيل.
+
+### Automated gate — 2026-08-22
+
+```text
+pytest: 83 passed, 1 known warning
+compileall: PASS
+Ruff correctness gate: PASS
+M7 retrieval regression: 14/14 top-1
+PostgreSQL head: 0006
+isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
+```
+
+التشغيل الكامل لـRuff ما زال يعرض 30 ملاحظة تنسيق قديمة خارج ملفات M8؛ بوابة correctness الحاجبة وملفات M8 نفسها ناجحة. التحذير الوحيد في pytest هو Starlette TestClient/httpx المعروف.
+
+### Telegram live gate — 2026-08-22
+
+- اقتراح حي من محادثة تحتوي تفضيلات وOTP/password اصطناعيين؛ بقيت الذاكرة صفرًا قبل الاعتماد.
+- لم تظهر القيم الحساسة في الاقتراح أو السجل، وتحولت المفاتيح إلى صياغة عربية مهنية.
+- بعد الاعتماد ظهرت الحقائق والتفضيلات مع provenance/confidence وتاريخ retention.
+- نجح تصدير JSON للمالك واختبار مسح الذاكرة مع confirmation دون حذف المحادثة.
+- رد Business حقيقي أظهر شريط تقييم 1–5، وسجل العميل 5 نجوم.
+- شاشة `📊 رضا العملاء` عرضت 5.0 من 5 وتوزيعًا صحيحًا.
+- حُذفت بعد الاختبار السجلات الاصطناعية المحددة فقط: ذاكرة واحدة، 3 اقتراحات، تقييم واحد ومعلومة PUBLIC واحدة. أعيد تشغيل البوت بالإعداد الافتراضي كل 3 ردود.
 
 ## Documentation hardening — 2026-08-22
 

@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -311,6 +312,34 @@ class Approval(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+    __table_args__ = (
+        CheckConstraint("rating >= 1 AND rating <= 5", name="ck_feedback_rating"),
+        UniqueConstraint("approval_id", name="uq_feedback_approval"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
+    contact_id: Mapped[int] = mapped_column(
+        ForeignKey("contacts.id", ondelete="CASCADE"), index=True
+    )
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    approval_id: Mapped[int] = mapped_column(
+        ForeignKey("approvals.id", ondelete="CASCADE"), index=True
+    )
+    rating: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(32), default="CONTACT")
+    category: Mapped[str] = mapped_column(String(64), default="RESPONSE_QUALITY")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class AuditLog(Base):

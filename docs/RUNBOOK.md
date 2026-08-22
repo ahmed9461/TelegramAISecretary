@@ -1,4 +1,4 @@
-# Runbook — Current M7
+# Runbook — Current M8
 
 ## المتطلبات
 
@@ -58,6 +58,7 @@ Migrations المعروفة حاليًا:
 0003_secretary_brain
 0004_m7_knowledge_operations
 0005_m7_approval_provenance
+0006_m8_memory_intelligence
 ```
 
 ## الاختبارات
@@ -66,10 +67,10 @@ Migrations المعروفة حاليًا:
 pytest
 ```
 
-آخر نتيجة محلية موثقة لـM7:
+آخر نتيجة محلية موثقة لـM8:
 
 ```text
-72 passed, 1 warning
+83 passed, 1 warning
 ```
 
 التحذير الحالي StarletteDeprecationWarning متعلق بـFastAPI TestClient/httpx ولا يمنع نجاح suite.
@@ -88,7 +89,7 @@ python scripts/evaluate_retrieval.py
 
 النتيجة الحالية: `14/14 top-1`.
 
-تمت بروفة M7 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند `0005`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار؛ استخدم قاعدة مؤقتة صريحة وتأكد من حذفها بعد البروفة.
+تمت بروفة M8 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند `0006`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
 
 لاختبار حد retry دون قطع شبكة حقيقية أو المخاطرة بتكرار رد عميل:
 
@@ -106,18 +107,18 @@ python -m app.telegram.run
 
 بعد التشغيل من حساب المالك أرسل `/start` عند الحاجة لفتح لوحة الإدارة.
 
-## تحديث النسخة المحلية من فرع M7
+## تحديث النسخة المحلية من فرع M8
 
 ```powershell
 cd D:\Desktop\telegram_ai_secretary_clean
-git switch codex/m7-retrieval-quality
+git switch codex/m8-memory-intelligence
 git pull
 .\.venv\Scripts\Activate.ps1
 pytest
 python -m app.telegram.run
 ```
 
-يجب أن يعرض `alembic current` الرأس `0005` قبل تشغيل كود M7.
+يجب أن يعرض `alembic current` الرأس `0006` قبل تشغيل كود M8.
 
 ## اختبار حي أساسي
 
@@ -193,6 +194,19 @@ Fail closed؛ لا إرسال.
 
 ### Telegram network error لبطاقة المالك
 `ResilientOwnerBot` يعيد المحاولة بشكل محدود لرسائل owner/admin فقط. لا يطبق هذا retry العام على customer business send.
+
+## اختبار M8 للذاكرة والتقييم
+
+1. أرسل من حساب ثانٍ تفضيلًا دائمًا ومعه OTP اصطناعي واضح.
+2. من `👥 ذاكرة الأشخاص` اختر الشخص ثم `✨ اقتراح من المحادثة`.
+3. قبل الاعتماد تحقق في DB أن ContactMemory لم تتغير وأن الاقتراح لا يحتوي OTP.
+4. اعتمد الاقتراح وتحقق من facts/preferences/provenance/confidence/retention.
+5. اختبر تصدير JSON ثم مسح الذاكرة مع confirmation.
+6. للاختبار فقط اضبط `FEEDBACK_PROMPT_EVERY_N_RESPONSES=1` في عملية البوت، وأرسل ردًا معتمدًا.
+7. من حساب العميل اضغط تقييمًا، ثم افتح `📊 الإحصائيات` من حساب المالك.
+8. نظف السجلات الاصطناعية المحددة وأعد تشغيل البوت دون override ليعود الافتراضي كل 3 ردود.
+
+لا تستخدم معلومة عميل حقيقية حساسة في الاختبار، ولا تحذف سجلًا سابقًا غير مرتبط بعلامة الاختبار.
 
 ### `query is too old`
 Handlers الحديثة تستخدم safe callback acknowledgment؛ الخطأ لا يفترض أن يسقط التطبيق.

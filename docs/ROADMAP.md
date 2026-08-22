@@ -33,7 +33,7 @@
 
 ## M7 — Retrieval Quality & Knowledge Operations
 
-الحالة: **منفذ واجتاز بوابة Telegram الحية وCI على Python 3.12/3.13؛ دمج PR #3 قيد الإغلاق**.
+الحالة: **مكتمل ومندمج في main عبر PR #3**.
 
 - retrieval quality بقياس 14 حالة top-1 بدل التخمين.
 - provenance دائم للمصادر المستخدمة في الموافقة.
@@ -44,13 +44,16 @@
 
 ## M8 — Memory Intelligence
 
-مخطط.
+الحالة: **منفذ واجتاز البوابة المحلية وTelegram الحية على `codex/m8-memory-intelligence`؛ PR/CI والدمج قيد الإغلاق**.
 
 - اقتراح تحديثات ذاكرة الشخص من المحادثة مع موافقة المالك.
 - فصل facts/preferences/relationship summary بصورة أوضح.
 - confidence + provenance لذاكرة الأشخاص.
 - قواعد retention ومسح/تصدير للذاكرة.
 - عدم ترقية أي memory إلى business knowledge تلقائيًا.
+- تنقية البيانات الحساسة في طبقة محلية مستقلة عن النموذج.
+- تقييم دوري قابل للضبط من العميل وإحصاءات رضا للمالك دون تعلم تلقائي.
+- migration `0006` وبروفة migration معزولة كاملة.
 
 ## M9 — Production Operations
 

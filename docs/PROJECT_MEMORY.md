@@ -4,14 +4,16 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **M7 — Retrieval Quality & Knowledge Operations**.
-- فرع التطوير الحالي: `codex/m7-retrieval-quality`، منشأ من `main` بعد إغلاق M6.
+- المرحلة الحالية: **M8 — Memory Intelligence & Feedback**.
+- فرع التطوير الحالي: `codex/m8-memory-intelligence`، منشأ من `main` بعد دمج M7.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
+- M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
 - CI إغلاق M6: GitHub Actions run `32535443695` نجح على Python 3.12 و3.13، مع `compileall` وRuff correctness gate و`pytest`.
-- آخر تحقق M7 محلي: **72 passed, 1 warning**، وRuff correctness و`compileall` ناجحان.
-- تقييم الاسترجاع الثابت: **14/14 top-1**، ورأس PostgreSQL المحلي `0005`.
-- بوابة Telegram الحية لـM7 نجحت في 2026-08-22.
-- PR #3 مفتوح؛ CI run `32538952535` (#104) نجح على Python 3.12 و3.13. بقيت مراجعة الدمج فقط.
+- آخر تحقق M8 محلي: **83 passed, 1 warning**، وRuff correctness و`compileall` ناجحان.
+- تقييم الاسترجاع الثابت: **14/14 top-1**.
+- رأس PostgreSQL المحلي أصبح `0006`، وبروفة migration المعزولة الكاملة ناجحة.
+- بوابة Telegram الحية لـM8 نجحت في 2026-08-22، بما فيها عدم التعلم قبل الموافقة والتقييم من العميل وإحصاءات المالك.
+- M8 لم تندمج بعد؛ الخطوة التالية هي commit/PR ثم CI على Python 3.12 و3.13.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -50,7 +52,7 @@ Telegram Business reply
 Telegram image → Gemini Vision → structured evidence → DeepSeek → local safety → approval/reply
 ```
 
-## ما تم إنجازه حتى M7
+## ما تم إنجازه حتى M8
 
 - اتصال Telegram Business الرسمي وتخزين Business Connections.
 - ingest للرسائل مع idempotency وconversation revision.
@@ -83,6 +85,10 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - حفظ provenance المستخدم في approval كـsnapshot دائم لا يتغير إذا تغيرت المعرفة لاحقًا.
 - صياغات إدارة وapproval عربية مهنية لا تعرض أكواد السياسة أو أسماء مزودي الذكاء.
 - منع عبارة «كيف أقدر أساعدك اليوم؟» وتوجيه السكرتير لاستخدام سياق النشاط عندما يتوفر.
+- اقتراح تحديث ذاكرة الشخص من المحادثة دون أي كتابة قبل اعتماد المالك.
+- فصل summary/facts/preferences/private notes مع provenance وconfidence وretention.
+- تنقية محلية للبيانات الحساسة وتصدير/مسح ذاكرة من واجهة Telegram.
+- تقييم دوري قابل للضبط من العميل الحقيقي، وإحصاءات رضا للمالك دون تعلم تلقائي.
 
 ## دليل إغلاق M6 المحلي — 2026-08-22
 
@@ -94,6 +100,22 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - منع التكرار: سجلت الموافقة المطابقة حالة `SENT` ومعرف رسالة Telegram واحدًا فقط، وظهر الرد مرة واحدة في المحادثة.
 - Network resilience: اختبار fault injection يثبت محاولتين محدودتين لطلب المالك مع backoff، وعدم إعادة إرسال طلب العميل غير المؤكد.
 - حذفت بعد الاختبارات فقط عناصر المعرفة الثلاثة والزرين السياقيين الاصطناعيين، وتأكد بقاء الزر السابق الحقيقي.
+
+## دليل إغلاق M7 — 2026-08-22
+
+- retrieval eval: 14/14 top-1، و72 اختبارًا محليًا.
+- اختبار حي للاستيراد المكرر والتعارض والمصادر المحفوظة والنسخ والتراجع والصياغة المهنية.
+- بروفة PostgreSQL كاملة حتى `0005`، وCI ناجح على Python 3.12/3.13.
+- اندمج PR #3 في `main` بالـSHA `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
+
+## دليل M8 المحلي والحي — 2026-08-22
+
+- 83 اختبارًا ناجحًا، مع compileall وRuff correctness و14/14 regression للاسترجاع.
+- PostgreSQL عند `0006`، وبروفة `upgrade → downgrade base → upgrade` نجحت في قاعدة مؤقتة وحُذفت.
+- ثبت حيًا أن الاقتراح لا يكتب الذاكرة قبل الموافقة، وأن OTP/password الاصطناعيين لا يصلان للسجل.
+- اعتمد المالك ذاكرة عربية مع provenance/confidence/retention، ثم صدّرها ومسحها بتأكيد.
+- ظهر تقييم 1–5 في رد Business حقيقي، وسجل العميل 5 نجوم وظهرت النتيجة في لوحة المالك.
+- نُظفت فقط البيانات الاصطناعية المحددة بعد الاختبار، وأعيد تشغيل البوت بالإعداد الدوري الافتراضي (كل 3 ردود).
 
 ## قواعد الاستمرارية
 
@@ -110,7 +132,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة
 
-إخراج PR #3 من Draft ودمج M7 بعد مراجعة الحالة النهائية. بعد ذلك يبدأ M8 على فرع مستقل لإضافة اقتراحات الذاكرة والتقييمات بموافقة صريحة، دون تعلم صامت.
+إغلاق M8 عبر commit/PR وCI على Python 3.12/3.13 ثم الدمج إلى `main`. بعد ذلك يبدأ M9 على فرع مستقل لتقوية التشغيل والإطلاق والنسخ الاحتياطي والمراقبة.
 
 ## ترتيب المراجع عند التعارض
 
