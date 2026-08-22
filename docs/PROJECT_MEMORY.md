@@ -4,14 +4,15 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **M10 — Advanced Automation**، والتنفيذ والبوابات المحلية والتشغيلية وTelegram الحية وCI التنفيذي مكتملة؛ PR #6 ينتظر CI دليل الإغلاق ثم الدمج.
-- فرع التطوير الحالي: `codex/m10-advanced-automation`، منشأ من `main` بعد دمج M9.
+- المرحلة المرجعية الحالية: **M10 — Advanced Automation مكتملة ومندمجة في `main`** عبر PR #6؛ merge SHA: `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
+- baseline المنتج الحالي هو `main` بالإصدار **0.10.0** ورأس migration `0008`. لا توجد M11 نشطة أو فرع تطوير معتمد لمرحلة لاحقة حاليًا.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
 - M8 اندمج في `main` عبر PR #4؛ merge SHA: `00cbf89841444c322af18fcc8b143fec83a17596`.
 - M9 اندمج في `main` عبر PR #5؛ merge SHA: `8039d79618eb836ffdcef9c6c221fb8b1ab2798f`.
+- M10 اندمج في `main` عبر PR #6؛ merge SHA: `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
 - CI إغلاق M6: GitHub Actions run `32535443695` نجح على Python 3.12 و3.13، مع `compileall` وRuff correctness gate و`pytest`.
-- آخر تحقق محلي كامل لـM10 قبل توثيقها: **106 passed, 1 warning**، مع بوابة Ruff الكاملة و`compileall` وretrieval 14/14 ناجحين.
+- آخر تحقق محلي كامل لـM10: **106 passed, 1 warning**، مع بوابة Ruff الكاملة و`compileall` وretrieval 14/14 ناجحين.
 - تقييم الاسترجاع الثابت: **14/14 top-1**.
 - رأس PostgreSQL المحلي أصبح `0008`، وبروفة migration المعزولة الكاملة ناجحة.
 - بوابة Telegram الحية لـM8 نجحت في 2026-08-22، بما فيها عدم التعلم قبل الموافقة والتقييم من العميل وإحصاءات المالك.
@@ -23,6 +24,7 @@
 - M10 وصل Flow/Custom Intent/Reminder/AUTO الفعلي بالـCore العام، مع واجهات عربية ونشر صريح ونسخ Flow ثابتة للجلسات.
 - بوابة M10 الحية نجحت للتدفق الكامل، تذكير مستقبلي مرة واحدة، AUTO حي بصياغة مهنية، API/0008/Docker/backup/restore/preflight، ثم نُظفت البيانات الاصطناعية المحددة فقط.
 - CI التنفيذي لـM10 في GitHub Actions run `32546910568` نجح على Python 3.12 و3.13 عند commit `bc5b7787`، مع بناء صورة الإنتاج في مهمة 3.12.
+- CI التوثيق النهائي لـM10 في GitHub Actions run `32547007628` نجح على Python 3.12 و3.13، ثم اندمج PR #6.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -154,6 +156,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - تذكير مستقبلي حسب timezone قابل للتعديل وصل مرة واحدة، وAUTO أرسل تحية «كيف أقدر أساعدك؟» مرة واحدة دون بطاقة أو أكواد.
 - بعد الاختبار نُظفت العناصر الاصطناعية المحددة وعادت القاعدة إلى messages=37/revision=17 و0 Flow/Intent/Session/Schedule/AiRun اصطناعي.
 - بوابة الموثوقية الأخيرة جعلت claim التذكير lease قابلة للاسترداد، وألزمت AUTO/Flow بإعادة فحص مالك الاتصال وحق الرد قبل كل إرسال؛ لا يعتمد الإرسال على صلاحية مخزنة.
+- CI النهائي بعد توثيق الإغلاق نجح في run `32547007628`، ثم اندمج PR #6 إلى `main` بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
 
 ## قواعد الاستمرارية
 
@@ -170,13 +173,13 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة
 
-إغلاق CI دليل M10 ثم دمج PR #6 إلى `main`. بعد الدمج ينفذ التدقيق النهائي الشامل لمعايير V1 ولا تبدأ ميزة مستقبلية غير مقاسة تلقائيًا.
+لا توجد M11 نشطة أو فجوة مطلوبة لإكمال M10. baseline المنتج الحالي هو `main` بعد M10. أي تطوير لاحق يبدأ فقط بعد تعريف milestone جديدة بنطاق واضح، سبب/حاجة مقاسة، ومعايير قبول واختبار مناسبة؛ وإلا يقتصر العمل على الصيانة والتوثيق ومعالجة عيوب مثبتة.
 
 ## ترتيب المراجع عند التعارض
 
 1. `MASTER_SPEC.md` للمبادئ الأساسية غير القابلة للتفاوض.
 2. `CONSTANTS.md` للثوابت الحالية.
 3. `DECISIONS.md` للقرارات المعمارية المعتمدة بعد الـbaseline.
-4. ملف milestone الأحدث مثل `M6_SECRETARY_LEARNING.md`.
+4. ملف milestone الأحدث مثل `M10_ADVANCED_AUTOMATION.md`.
 5. `PROJECT_MEMORY.md` للحالة التشغيلية الحالية.
 6. الكود والاختبارات هما المرجع النهائي لما هو منفذ فعليًا.

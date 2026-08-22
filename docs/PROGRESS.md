@@ -341,7 +341,7 @@ Docker non-root health/readiness smoke: PASS
 
 ## M10 — Advanced Automation
 
-**Status: التنفيذ وجميع البوابات الحية مكتملة، وCI التنفيذي ناجح عبر PR #6؛ بقي CI دليل الإغلاق ثم الدمج.**
+**Status: مكتمل ومندمج في `main` عبر PR #6 بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`.**
 
 ### Implemented
 
@@ -382,10 +382,12 @@ Docker Compose config/build/non-root smoke: PASS
 
 - فُتح PR #6 عند commit `bc5b7787d70c0c60a41ead552635a311b560341c`.
 - نجح GitHub Actions run `32546910568` على Python 3.12 و3.13؛ شملت 3.12 بوابة Ruff/compileall/pytest وبناء صورة الإنتاج.
+- نجح GitHub Actions run `32547007628` بعد تحديث دليل الإغلاق على Python 3.12 و3.13.
+- اندمج PR #6 في `main` بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`.
 
 ## Documentation hardening — 2026-08-22
 
-Documentation is being promoted to a first-class project artifact. Added/updated:
+Documentation was promoted to a first-class project artifact. Added/updated:
 
 - project memory.
 - constants/invariants.
@@ -401,3 +403,10 @@ Documentation is being promoted to a first-class project artifact. Added/updated
 - current runbook and README.
 
 Goal: the repository itself must be sufficient context for a new developer/AI without relying on the chat history as the only project memory.
+
+## Final documentation closure — 2026-08-23
+
+- تمت مزامنة حالة M10 في README وPROJECT_MEMORY وROADMAP وM10 report وACCEPTANCE_CRITERIA وDEVELOPER_HANDOFF وفهرس التوثيق.
+- أصبحت كل بوابات M10 مغلقة، بما فيها CI النهائي والدمج إلى `main`.
+- baseline المنتج الحالي هو `main` بالإصدار `0.10.0` ورأس migration `0008`.
+- لا توجد M11 نشطة؛ أي تطوير لاحق يفتح كمرحلة جديدة بنطاق ومعايير قبول مستقلة.

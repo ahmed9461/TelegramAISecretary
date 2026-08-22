@@ -4,9 +4,13 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M10 — Advanced Automation** في الفرع `codex/m10-advanced-automation`. اندمج M9 في `main` عبر PR #5 بالـSHA `8039d796`، واجتازت M10 بواباتها المحلية وPostgreSQL/Docker وTelegram الحية؛ PR/CI والدمج قيد الإغلاق.
+**M10 — Advanced Automation مكتملة ومندمجة في `main`** عبر PR #6 بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`. الإصدار المرجعي الحالي هو **0.10.0**.
 
-آخر gate محلي كامل قبل توثيق M10:
+أغلقت M10 بعد نجاح البوابات المحلية والحية وPostgreSQL/Docker وGitHub Actions. نجح CI النهائي بعد تحديث دليل الإغلاق في run `32547007628` على Python 3.12 و3.13، ثم تم الدمج إلى `main`.
+
+بهذا تعتبر الخطة الأساسية المنفذة من M0 حتى M10 **مغلقة وظيفيًا ضمن نطاقها الحالي**. لا توجد مرحلة M11 نشطة أو مطلوبة لإكمال النطاق الحالي؛ أي M11 مستقبلية تكون توسعة جديدة تُعرّف صراحة بعد وجود حاجة مقاسة أو متطلب جديد.
+
+آخر بوابة إغلاق موثقة لـM10:
 
 ```text
 retrieval evaluation: 14/14 top-1
@@ -17,6 +21,7 @@ PostgreSQL head: 0008
 isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS
+GitHub Actions final CI: 32547007628 PASS (Python 3.12/3.13)
 ```
 
 ## ما يعمل الآن
@@ -114,7 +119,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - [`docs/M7_RETRIEVAL_QUALITY.md`](docs/M7_RETRIEVAL_QUALITY.md) — تفاصيل M7.
 - [`docs/M8_MEMORY_INTELLIGENCE.md`](docs/M8_MEMORY_INTELLIGENCE.md) — تفاصيل M8.
 - [`docs/M9_PRODUCTION_OPERATIONS.md`](docs/M9_PRODUCTION_OPERATIONS.md) — تفاصيل وإغلاق M9.
-- [`docs/M10_ADVANCED_AUTOMATION.md`](docs/M10_ADVANCED_AUTOMATION.md) — تفاصيل وبوابة M10.
+- [`docs/M10_ADVANCED_AUTOMATION.md`](docs/M10_ADVANCED_AUTOMATION.md) — تفاصيل وإغلاق M10.
 
 ## قاعدة المشروع
 

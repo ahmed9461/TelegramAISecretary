@@ -4,11 +4,13 @@
 
 ## قبل أي تعديل
 
-اقرأ `docs/README.md` بالترتيب المقترح، وبالأخص `MASTER_SPEC.md`, `PROJECT_MEMORY.md`, `CONSTANTS.md`, `DECISIONS.md`, `PROGRESS.md`, وملف milestone الحالي.
+اقرأ `docs/README.md` بالترتيب المقترح، وبالأخص `MASTER_SPEC.md`, `PROJECT_MEMORY.md`, `CONSTANTS.md`, `DECISIONS.md`, `PROGRESS.md`, وملف milestone الأحدث.
 
 ثم افحص الكود والمigrations الفعلية قبل اقتراح schema أو إعادة هيكلة. لا تفترض أن وصفًا قديمًا في محادثة خارج Git أحدث من المستودع.
 
-الحالة المسجلة في 2026-08-22: M9 مدمج في `main` بالـSHA `8039d796`، والتطوير الحالي M10 على `codex/m10-advanced-automation` برأس migration `0008`. التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة، وCI التنفيذي لـPR #6 نجح؛ بقي CI تحديث دليل الإغلاق ثم الدمج. تحقق دائمًا من Git/Alembic لأن هذه الجملة ستصبح تاريخية عند إغلاق المرحلة.
+الحالة المرجعية المسجلة بعد الإغلاق: **M10 مدمجة في `main` عبر PR #6** بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`، الإصدار `0.10.0`، ورأس migration هو `0008`. نجح CI النهائي run `32547007628` على Python 3.12 و3.13 بعد نجاح البوابات المحلية وPostgreSQL/Docker وTelegram الحية. لا توجد M11 نشطة حاليًا؛ `main` هو baseline المنتج الحالي، وأي مرحلة جديدة يجب أن تُعرّف صراحة قبل بدء تنفيذها.
+
+تحقق دائمًا من Git/Alembic عند استلام المشروع لأن الحالة قد تتغير بعد هذا السجل.
 
 ## قواعد التنفيذ
 
@@ -26,16 +28,17 @@
 - لا تضف نص الرسائل أو prompts إلى metrics/AiRun/audit/logs؛ telemetry تبقى bounded metadata.
 - لا تعتبر backup ناجحًا دون restore rehearsal معزولة، ولا تختبر downgrade على قاعدة الحقيقة.
 - لا تحول `/health` إلى فحص dependencies؛ استخدم `/ready` للجاهزية وافشل مغلقًا.
+- لا تبدأ M11 أو أي milestone جديدة بالاسم فقط؛ عرّف النطاق ومعايير القبول والسبب المقاس أولًا.
 
 ## قبل اعتبار المهمة منتهية
 
 شغل الاختبارات المناسبة، `compileall`، وفحوص CI. إذا كانت الميزة تعتمد على Telegram Business الحقيقي فاختبار unit وحده لا يكفي؛ نفذ live verification.
 
-حدث التوثيق الذي تغير مع الكود. إذا تغير قرار معماري فأضف ADR. إذا تغير التشغيل فحدث RUNBOOK. إذا تغير وضع milestone فحدث PROJECT_MEMORY وPROGRESS وROADMAP.
+حدث التوثيق الذي تغير مع الكود. إذا تغير قرار معماري فأضف ADR. إذا تغير التشغيل فحدث RUNBOOK. إذا فتح أو أغلق milestone فحدث PROJECT_MEMORY وPROGRESS وROADMAP وملف milestone نفسه.
 
-في M9 شغّل أيضًا `docker compose config -q`، build للصورة، production preflight، backup+restore rehearsal، وhealth/ready/metrics auth live. ميز بين نجاح إعداد development وبين readiness إنتاجية؛ `APP_ENV=production` وmetrics token قويان شرط نشر حقيقي.
+عند تعديل طبقة التشغيل التي أغلقتها M9، شغّل أيضًا `docker compose config -q`، build للصورة، production preflight، backup+restore rehearsal، وhealth/ready/metrics auth live. ميز بين نجاح إعداد development وبين readiness إنتاجية؛ `APP_ENV=production` وmetrics token قويان شرط نشر حقيقي.
 
-في M10 أضف Flow/Intent/Reminder/AUTO live gate على Contact تجريبي. أنشئ Flow كمسودة ثم Preview ثم Publish، وتحقق من snapshot الجلسة ومن وصول reminder مرة واحدة. AUTO لا يختبر على بيانات حقيقية حساسة ولا يفعّل على محادثة مشددة؛ نظف فقط IDs الاصطناعية الموثقة بعد القياس.
+عند تعديل قدرات M10، أعد Flow/Intent/Reminder/AUTO live gate على Contact تجريبي. أنشئ Flow كمسودة ثم Preview ثم Publish، وتحقق من snapshot الجلسة ومن وصول reminder مرة واحدة. AUTO لا يختبر على بيانات حقيقية حساسة ولا يفعّل على محادثة مشددة؛ نظف فقط IDs الاصطناعية الموثقة بعد القياس.
 
 إرسال AUTO/Flow يعيد فحص Business Connection و`can_reply` لحظة الإرسال. لا تحذف هذا الفحص لصالح الكاش. Reminder claim هي lease افتراضيًا 300 ثانية حتى يستطيع عامل جديد استرداد تذكير علق بعد انهيار العملية.
 
