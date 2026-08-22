@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict, dataclass
 
 import httpx
@@ -28,10 +29,14 @@ def _request_check(url: str, *, headers: dict[str, str]) -> Check:
         return Check(False, type(exc).__name__)
 
 
+def _configured_postgres_password() -> str:
+    values = {**_dotenv_values(PROJECT_ROOT / ".env"), **os.environ}
+    return values.get("POSTGRES_PASSWORD", "")
+
+
 def run_preflight(*, live: bool, allow_development: bool) -> dict[str, Check]:
     settings = get_settings()
-    env_values = _dotenv_values(PROJECT_ROOT / ".env")
-    postgres_password = env_values.get("POSTGRES_PASSWORD", "")
+    postgres_password = _configured_postgres_password()
     snapshot = readiness_snapshot(settings)
     checks = {
         "environment": Check(
