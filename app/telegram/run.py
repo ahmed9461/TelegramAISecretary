@@ -17,7 +17,7 @@ from app.telegram.resilient_bot import ResilientOwnerBot
 
 async def main() -> None:
     settings = get_settings()
-    configure_logging(settings.log_level)
+    configure_logging(settings.log_level, settings.log_format)
     if not settings.telegram_configured:
         raise RuntimeError("TELEGRAM_BOT_TOKEN and OWNER_TELEGRAM_ID are required")
     bot = ResilientOwnerBot(

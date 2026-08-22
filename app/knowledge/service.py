@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.db.enums import Visibility
 
@@ -14,7 +14,7 @@ class KnowledgeRecord:
     valid_until: datetime | None = None
 
     def usable_now(self, at: datetime | None = None) -> bool:
-        at = at or datetime.now(timezone.utc)
+        at = at or datetime.now(UTC)
         if self.valid_from and at < self.valid_from:
             return False
         if self.valid_until and at > self.valid_until:

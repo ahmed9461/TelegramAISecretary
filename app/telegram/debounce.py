@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
-from typing import Hashable
+from collections.abc import Awaitable, Callable, Hashable
 
 logger = logging.getLogger(__name__)
 

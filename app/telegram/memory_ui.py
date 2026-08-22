@@ -17,6 +17,7 @@ from aiogram.types import (
 from sqlalchemy import select, update
 
 from app.ai.factory import build_ai_provider
+from app.audit.service import write_audit_log
 from app.brain.models import ContactMemory, MemorySuggestion
 from app.brain.service import get_contact_memory, memory_for_ai, upsert_contact_memory
 from app.config import get_settings
@@ -851,6 +852,15 @@ async def memory_clear_confirm(callback: CallbackQuery) -> None:
                 MemorySuggestion.status == "PENDING",
             )
             .values(status="REJECTED", resolved_at=datetime.now(UTC))
+        )
+        write_audit_log(
+            session,
+            owner_id=owner.id,
+            actor="OWNER_TELEGRAM",
+            action="CONTACT_MEMORY_CLEAR",
+            entity_type="CONTACT",
+            entity_id=contact.id,
+            metadata={"had_memory": memory is not None},
         )
         session.commit()
     if callback.message:

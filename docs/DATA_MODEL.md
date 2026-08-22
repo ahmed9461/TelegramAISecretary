@@ -50,13 +50,13 @@
 تمثل الحالات التي تحتاج تدخلًا من المالك عندما يكون ذلك مستخدمًا في المسار.
 
 ### ai_runs
-سجل عمليات AI عندما يستخدمه المسار، لأغراض التتبع والتقييم.
+سجل عمليات AI لأغراض التتبع والتقييم: owner/conversation/trigger IDs، trace وoperation، provider/model، intent/risk/action/confidence، knowledge reference IDs، latency، token usage، status/error code ووقت الإنشاء. لا يحتوي نص الرسالة أو candidate reply أو prompt أو secrets.
 
 ### feedback
 تقييم 1–5 مرتبط بالمالك والشخص والمحادثة وApproval واحد. القيد الفريد على approval يسمح للعميل بتحديث تقييم الرد نفسه دون إنشاء صفوف مكررة، والتحقق المحلي يقبل مستلم الرد فقط.
 
 ### audit_logs
-سجل تغييرات وأحداث إدارية ذات قيمة تدقيقية.
+سجل تغييرات وأحداث إدارية ذات قيمة تدقيقية. M9 يكتب عمليات الإرسال/الرفض والحذف/المسح/التراجع الأساسية داخل transaction نفسها، مع metadata محدودة تمنع مفاتيح content/text/message/token/password/secret/API key.
 
 ## الواجهة الديناميكية
 
@@ -101,5 +101,6 @@
 - `0004_m7_knowledge_operations`
 - `0005_m7_approval_provenance`
 - `0006_m8_memory_intelligence`
+- `0007_m9_production_observability`
 
 قبل إنشاء migration جديد: افحص رأس Alembic الحالي والموديلات الموجودة، ولا تنشئ جدولًا مكررًا لمفهوم موجود أصلًا.

@@ -27,7 +27,12 @@ async def test_gemini_vision_returns_structured_observation() -> None:
             json={
                 "candidates": [
                     {"content": {"parts": [{"text": json.dumps(output)}]}}
-                ]
+                ],
+                "usageMetadata": {
+                    "promptTokenCount": 12,
+                    "candidatesTokenCount": 8,
+                    "totalTokenCount": 20,
+                },
             },
         )
 
@@ -43,3 +48,8 @@ async def test_gemini_vision_returns_structured_observation() -> None:
     assert result.extracted_text == "Premium - $10"
     assert result.confidence == 0.98
     assert "price card" in result.visible_elements
+    assert provider.token_usage == {
+        "prompt_tokens": 12,
+        "completion_tokens": 8,
+        "total_tokens": 20,
+    }

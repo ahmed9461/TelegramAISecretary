@@ -10,6 +10,8 @@ htmlcov/
 *.sqlite3
 *.db
 *.log
+work/
+backups/
 dist/
 build/
 *.egg-info/

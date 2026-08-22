@@ -4,10 +4,10 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-08-21
 """
-from alembic import op
 
-from app.db.base import Base
+from alembic import op
 from app.db import models  # noqa: F401
+from app.db.base import Base
 
 revision = "0001"
 down_revision = None

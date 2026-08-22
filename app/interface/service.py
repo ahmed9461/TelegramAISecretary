@@ -66,9 +66,7 @@ def menu_item_matches_context(
         return True
 
     intents = {
-        str(value).strip().upper()
-        for value in (rules.get("intents") or [])
-        if str(value).strip()
+        str(value).strip().upper() for value in (rules.get("intents") or []) if str(value).strip()
     }
     current_intent = str(ctx.get("intent") or "").strip().upper()
     if intents and current_intent and current_intent in intents:
@@ -109,7 +107,9 @@ def load_menu_definition(
         query = query.where(MenuItem.parent_item_id.is_(None))
     else:
         query = query.where(MenuItem.parent_item_id == parent_item_id)
-    rows = list(session.scalars(query.order_by(MenuItem.row_index, MenuItem.sort_order, MenuItem.id)))
+    rows = list(
+        session.scalars(query.order_by(MenuItem.row_index, MenuItem.sort_order, MenuItem.id))
+    )
 
     buttons: list[MenuButton] = []
     for row in rows:

@@ -36,6 +36,22 @@ Persistence
 
 `app/main.py` يبقى مدخل FastAPI الصحي/التشغيلي، بينما `app/telegram/run.py` هو مدخل polling الخاص بـTelegram.
 
+## التشغيل والمراقبة
+
+```text
+HTTP request / Telegram AI work
+        ↓
+trace ID + structured event
+        ↓
+AiRun / bounded AuditLog metadata
+        ↓
+aggregate Prometheus metrics
+```
+
+`/health` يثبت حياة عملية API فقط. `/ready` يقرأ DB ويتحقق أن `alembic_version` يساوي رأس المصدر، ثم يطبق متطلبات إعداد Telegram وAI. `/metrics` يجمع counts/latency/tokens/retrieval/feedback دون قراءة نص الرسائل إلى الناتج. سجلات JSON تمر عبر redaction محلي قبل إخراجها.
+
+حزم التشغيل لا تغير Core: Docker Compose ينسق `postgres → migrate → api/bot`، وsystemd يقدم الأدوار نفسها كوحدات منفصلة. النسخ الاحتياطي والاستعادة أدوات تشغيلية تحت `scripts/` ولا تنفذ downgrade على قاعدة الحقيقة.
+
 ## مسار رسالة نصية
 
 1. يصل `business_message` من Telegram.
@@ -103,3 +119,5 @@ MenuProfile + MenuItem يمثلان واجهة قابلة للبيانات. `app
 ## حدود المسؤولية
 
 Telegram-specific types لا تدخل Core. AI لا يقرر وحده الإرسال. قاعدة البيانات لا تحتوي أسرار provider. PRIVATE لا يغادر طبقة البيانات إلى LLM. retry الشبكي لرسائل العميل لا يتم عميانيًا عند حالة إرسال غير مؤكدة.
+
+Telemetry لا تصبح قناة بيانات بديلة: `AiRun` يحمل IDs ومقاييس وقرارًا محدودًا فقط، وAuditLog يقبل metadata منقاة. نص الرسالة يبقى في `messages` وفق عقد البيانات الأصلي ولا يكرر في السجلات التشغيلية.

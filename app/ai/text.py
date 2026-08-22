@@ -11,6 +11,7 @@ from app.db.enums import DecisionAction
 class TextResult:
     decision: Decision
     candidate_reply: str
+    token_usage: dict[str, int]
 
 
 class TextPipeline:
@@ -25,4 +26,9 @@ class TextPipeline:
             candidate = ""
         else:
             candidate = await self.ai.generate_reply(text=text, context=context, decision=decision)
-        return TextResult(decision=decision, candidate_reply=candidate)
+        usage = getattr(self.ai, "token_usage", {})
+        return TextResult(
+            decision=decision,
+            candidate_reply=candidate,
+            token_usage=dict(usage) if isinstance(usage, dict) else {},
+        )

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from time import perf_counter
+from uuid import uuid4
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
@@ -39,6 +41,7 @@ from app.knowledge.admin import (
     list_knowledge,
     normalize_visibility,
 )
+from app.observability.metrics import record_ai_run
 from app.security.owner import OwnerGuard
 from app.telegram.adapter import AiogramTelegramAdapter
 from app.telegram.contracts import IncomingBusinessMessage
@@ -51,6 +54,62 @@ router = Router(name="secretary")
 settings = get_settings()
 guard = OwnerGuard(settings.owner_telegram_id)
 debouncer = DebounceRegistry()
+
+
+def _knowledge_reference_ids(context: dict) -> list[int]:
+    references: list[int] = []
+    for item in context.get("trusted_knowledge") or []:
+        if isinstance(item, dict) and isinstance(item.get("id"), int):
+            references.append(item["id"])
+    return references
+
+
+def _persist_ai_telemetry(
+    *,
+    owner_id: int,
+    conversation_id: int,
+    trigger_message_id: int,
+    trace_id: str,
+    operation: str,
+    provider: str,
+    model: str,
+    status: str,
+    latency_ms: int,
+    context: dict,
+    result=None,
+    error_code: str = "",
+) -> None:
+    decision = getattr(result, "decision", None)
+    with SessionLocal() as session:
+        record_ai_run(
+            session,
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation=operation,
+            provider=provider,
+            model=model,
+            intent=getattr(decision, "intent", ""),
+            risk=getattr(getattr(decision, "risk", None), "value", ""),
+            action=getattr(getattr(decision, "action", None), "value", ""),
+            confidence=(
+                decision.confidence.model_dump(mode="json") if decision is not None else {}
+            ),
+            knowledge_refs=_knowledge_reference_ids(context),
+            latency_ms=latency_ms,
+            token_usage=getattr(result, "token_usage", {}),
+            status=status,
+            error_code=error_code,
+        )
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception(
+                "ai_telemetry_commit_failed",
+                extra={"trace_id": trace_id, "operation": operation},
+            )
 
 
 def _rights_json(connection: BusinessConnection) -> dict:
@@ -454,16 +513,38 @@ async def _process_text_for_approval(
         conversation = session.get(Conversation, conversation_id)
         if conversation is None:
             return
+        owner_id = conversation.owner_id
         chat_id = conversation.telegram_chat_id
         contact = session.get(Contact, conversation.contact_id)
         contact_name = contact.display_name if contact else "غير معروف"
 
     adapter = AiogramTelegramAdapter(bot)
     await adapter.send_typing(business_connection_id=connection_id, chat_id=chat_id)
+    trace_id = uuid4().hex
+    started = perf_counter()
     try:
         result = await build_text_pipeline(settings).process_text(text=text, context=context)
-    except Exception:
-        logger.exception("text_ai_failed chat=%s trigger=%s", chat_id, trigger_message_id)
+    except Exception as exc:
+        latency_ms = round((perf_counter() - started) * 1000)
+        _persist_ai_telemetry(
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation="TEXT_RESPONSE",
+            provider=settings.ai_provider,
+            model=settings.deepseek_model,
+            status="ERROR",
+            latency_ms=latency_ms,
+            context=context,
+            error_code=type(exc).__name__,
+        )
+        logger.exception(
+            "text_ai_failed chat=%s trigger=%s",
+            chat_id,
+            trigger_message_id,
+            extra={"trace_id": trace_id, "operation": "TEXT_RESPONSE"},
+        )
         await bot.send_message(
             chat_id=settings.owner_telegram_id,
             text=(
@@ -476,8 +557,39 @@ async def _process_text_for_approval(
 
     # A newer incoming/edit/delete event invalidates the AI result before it becomes a draft.
     if _conversation_is_current(conversation_id, expected_revision) is None:
-        logger.info("ai_result_discarded_stale conversation=%s", conversation_id)
+        _persist_ai_telemetry(
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation="TEXT_RESPONSE",
+            provider=settings.ai_provider,
+            model=settings.deepseek_model,
+            status="DISCARDED",
+            latency_ms=round((perf_counter() - started) * 1000),
+            context=context,
+            result=result,
+        )
+        logger.info(
+            "ai_result_discarded_stale conversation=%s",
+            conversation_id,
+            extra={"trace_id": trace_id, "operation": "TEXT_RESPONSE"},
+        )
         return
+
+    _persist_ai_telemetry(
+        owner_id=owner_id,
+        conversation_id=conversation_id,
+        trigger_message_id=trigger_message_id,
+        trace_id=trace_id,
+        operation="TEXT_RESPONSE",
+        provider=settings.ai_provider,
+        model=settings.deepseek_model,
+        status="SUCCESS",
+        latency_ms=round((perf_counter() - started) * 1000),
+        context=context,
+        result=result,
+    )
 
     if result.decision.action == DecisionAction.SILENT:
         return
@@ -540,6 +652,7 @@ async def _process_photo_for_approval(
         conversation = session.get(Conversation, conversation_id)
         if conversation is None:
             return
+        owner_id = conversation.owner_id
         expected_revision = conversation.revision
         contact = session.get(Contact, conversation.contact_id)
         contact_name = contact.display_name if contact else "غير معروف"
@@ -564,6 +677,8 @@ async def _process_photo_for_approval(
 
     adapter = AiogramTelegramAdapter(bot)
     await adapter.send_typing(business_connection_id=connection_id, chat_id=chat_id)
+    trace_id = uuid4().hex
+    started = perf_counter()
     try:
         image_bytes = await adapter.download_file_bytes(
             file_id=message.photo[-1].file_id,
@@ -575,8 +690,27 @@ async def _process_photo_for_approval(
             user_text=message.caption,
             context=context,
         )
-    except Exception:
-        logger.exception("multimodal_image_failed chat=%s message=%s", chat_id, message.message_id)
+    except Exception as exc:
+        latency_ms = round((perf_counter() - started) * 1000)
+        _persist_ai_telemetry(
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation="IMAGE_RESPONSE",
+            provider="gemini+deepseek",
+            model=f"{settings.gemini_model}+{settings.deepseek_model}",
+            status="ERROR",
+            latency_ms=latency_ms,
+            context=context,
+            error_code=type(exc).__name__,
+        )
+        logger.exception(
+            "multimodal_image_failed chat=%s message=%s",
+            chat_id,
+            message.message_id,
+            extra={"trace_id": trace_id, "operation": "IMAGE_RESPONSE"},
+        )
         await bot.send_message(
             chat_id=settings.owner_telegram_id,
             text=(
@@ -588,8 +722,39 @@ async def _process_photo_for_approval(
         return
 
     if _conversation_is_current(conversation_id, expected_revision) is None:
-        logger.info("image_ai_result_discarded_stale conversation=%s", conversation_id)
+        _persist_ai_telemetry(
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation="IMAGE_RESPONSE",
+            provider="gemini+deepseek",
+            model=f"{settings.gemini_model}+{settings.deepseek_model}",
+            status="DISCARDED",
+            latency_ms=round((perf_counter() - started) * 1000),
+            context=context,
+            result=result,
+        )
+        logger.info(
+            "image_ai_result_discarded_stale conversation=%s",
+            conversation_id,
+            extra={"trace_id": trace_id, "operation": "IMAGE_RESPONSE"},
+        )
         return
+
+    _persist_ai_telemetry(
+        owner_id=owner_id,
+        conversation_id=conversation_id,
+        trigger_message_id=trigger_message_id,
+        trace_id=trace_id,
+        operation="IMAGE_RESPONSE",
+        provider="gemini+deepseek",
+        model=f"{settings.gemini_model}+{settings.deepseek_model}",
+        status="SUCCESS",
+        latency_ms=round((perf_counter() - started) * 1000),
+        context=context,
+        result=result,
+    )
 
     if (
         result.decision.action in {DecisionAction.SILENT, DecisionAction.ESCALATE}

@@ -66,7 +66,13 @@ class FlowRuntime:
             self.completed = True
             return None
 
-        if step.type in {StepType.ASK_TEXT, StepType.ASK_NUMBER, StepType.ASK_DATE, StepType.ASK_FILE, StepType.ASK_CHOICE}:
+        if step.type in {
+            StepType.ASK_TEXT,
+            StepType.ASK_NUMBER,
+            StepType.ASK_DATE,
+            StepType.ASK_FILE,
+            StepType.ASK_CHOICE,
+        }:
             if step.required and (value is None or value == ""):
                 raise ValueError("value_required")
             if step.type == StepType.ASK_CHOICE and value not in step.choices:

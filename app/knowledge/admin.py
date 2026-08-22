@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.audit.service import write_audit_log
 from app.db.enums import Visibility
 from app.db.models import KnowledgeBatch, KnowledgeItem, Owner
 
@@ -82,6 +83,15 @@ def delete_knowledge(session: Session, *, owner_id: int, knowledge_id: int) -> b
     if row is None or row.owner_id != owner_id:
         return False
     row.status = "DELETED"
+    write_audit_log(
+        session,
+        owner_id=owner_id,
+        actor="OWNER_TELEGRAM",
+        action="KNOWLEDGE_DELETE",
+        entity_type="KNOWLEDGE_ITEM",
+        entity_id=row.id,
+        metadata={"visibility": row.visibility, "version": row.version},
+    )
     session.flush()
     return True
 
@@ -156,5 +166,14 @@ def rollback_knowledge_batch(session: Session, *, owner_id: int, batch_id: int) 
         row.status = "ROLLED_BACK"
     batch.status = "ROLLED_BACK"
     batch.rolled_back_at = datetime.now(UTC)
+    write_audit_log(
+        session,
+        owner_id=owner_id,
+        actor="OWNER_TELEGRAM",
+        action="KNOWLEDGE_BATCH_ROLLBACK",
+        entity_type="KNOWLEDGE_BATCH",
+        entity_id=batch.id,
+        metadata={"affected_items": len(rows)},
+    )
     session.flush()
     return len(rows)

@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     app_host: str = "127.0.0.1"
     app_port: int = 8000
     log_level: str = "INFO"
+    log_format: str = "json"
+    metrics_token: str = Field(default="", repr=False)
+    metrics_window_days: int = 30
+    readiness_require_telegram: bool = True
+    readiness_require_ai: bool = True
+    backup_retention_days: int = 30
 
     telegram_bot_token: str = Field(default="", repr=False)
     owner_telegram_id: int = 0

@@ -7,7 +7,9 @@ from app.vision.schemas import VisionObservation
 
 
 class FakeVision:
-    async def analyze_image(self, *, image_bytes: bytes, mime_type: str, user_text: str | None = None):
+    async def analyze_image(
+        self, *, image_bytes: bytes, mime_type: str, user_text: str | None = None
+    ):
         assert image_bytes == b"img"
         assert mime_type == "image/jpeg"
         return VisionObservation(

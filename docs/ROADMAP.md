@@ -44,7 +44,7 @@
 
 ## M8 — Memory Intelligence
 
-الحالة: **منفذ واجتاز البوابة المحلية وTelegram الحية وCI على Python 3.12/3.13؛ دمج PR #4 قيد الإغلاق**.
+الحالة: **مكتمل ومندمج في main عبر PR #4**.
 
 - اقتراح تحديثات ذاكرة الشخص من المحادثة مع موافقة المالك.
 - فصل facts/preferences/relationship summary بصورة أوضح.
@@ -57,18 +57,20 @@
 
 ## M9 — Production Operations
 
-مخطط.
+الحالة: **منفذ واجتاز البوابة المحلية والتشغيلية الحية وCI الأول؛ PR #5 والدمج النهائي قيد الإغلاق**.
 
-- deployment موثق على Ubuntu باستخدام systemd/Docker حسب الدور.
-- health/readiness/structured logs.
-- metrics للأخطاء، latency، AI usage، approvals، retrieval hits.
-- backup/restore PostgreSQL.
-- runbooks للأعطال الشائعة.
-- secret rotation procedure.
+- deployment موثق على Ubuntu باستخدام systemd/Docker، مع migration service وصورة غير جذرية.
+- liveness وreadiness حقيقية، trace IDs، وسجلات JSON مع تنقية الأسرار.
+- metrics محمية للأخطاء، latency، AI usage/tokens، approvals، retrieval hits والتقييمات.
+- `AiRun` وaudit trail محدودان ولا ينسخان نص الرسائل إلى telemetry.
+- backup PostgreSQL بصيغة custom مع checksum وretention وبروفة restore في قاعدة معزولة.
+- runbooks للأعطال الشائعة وproduction preflight للمزودات وقاعدة البيانات.
+- تدوير ذري لأسرار PostgreSQL/metrics وإجراء موثق لبقية مزودي الخدمات.
+- GitHub Actions run `32544367834` نجح على Python 3.12 و3.13، مع بناء صورة الإنتاج في مهمة 3.12؛ إعادة البوابة بعد توثيق الإصدار مطلوبة قبل الدمج.
 
 ## M10 — Advanced Automation
 
-مستقبلي ويعتمد على قياسات الحاجة.
+المرحلة التالية بعد دمج M9، وتنفذ ضمن نطاق القياسات والحالات القابلة لإثبات الحاجة.
 
 - Flows فعلية أكثر من primitives الحالية.
 - schedules/reminders عند وجود use case واضح.

@@ -8,6 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import func, select
 
+from app.audit.service import write_audit_log
 from app.config import get_settings
 from app.db.enums import ConversationState, InterfaceMode
 from app.db.models import MenuItem
@@ -325,6 +326,14 @@ async def interface_delete(callback: CallbackQuery) -> None:
             await safe_callback_answer(callback, "لم أجد الزر", show_alert=True)
             return
         _, row = pair
+        write_audit_log(
+            session,
+            owner_id=owner.id,
+            actor="OWNER_TELEGRAM",
+            action="INTERFACE_BUTTON_DELETE",
+            entity_type="MENU_ITEM",
+            entity_id=row.id,
+        )
         session.delete(row)
         session.commit()
         profile, rows = list_menu_items(session, owner_id=owner.id)

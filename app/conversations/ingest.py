@@ -14,7 +14,9 @@ def ingest_message(
     username: str | None = None,
 ) -> IngestResult:
     if incoming.sender_user_id is None:
-        raise ValueError("business message sender_user_id is required for private contact ingestion")
+        raise ValueError(
+            "business message sender_user_id is required for private contact ingestion"
+        )
 
     owner = OwnerRepository.get_or_create(session, owner_telegram_id)
     result = ConversationRepository.ingest_business_message(
