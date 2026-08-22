@@ -4,6 +4,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system secretary \
     && useradd --system --gid secretary --home-dir /app --shell /usr/sbin/nologin secretary
 
@@ -13,6 +17,7 @@ COPY pyproject.toml ./
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
+COPY scripts ./scripts
 
 RUN python -m pip install --no-cache-dir . \
     && chown -R secretary:secretary /app
