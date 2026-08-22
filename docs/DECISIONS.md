@@ -176,3 +176,33 @@ Each AI operation may persist trace, provider/model, policy decision, bounded co
 **Status:** Accepted
 
 Production PostgreSQL backups use custom format, checksum manifests, restricted permissions and bounded retention. A release gate must restore a backup into a uniquely named isolated database, verify Alembic revision and representative counts, then drop only that temporary database. Normal updates never delete the primary volume.
+
+## ADR-030 — Published flow sessions own an immutable definition snapshot
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Starting a Flow copies its validated definition into `flow_sessions.definition_json` with the published version. A later edit is published as a newer Flow and may archive the prior definition, but active sessions continue from their snapshot. This avoids changing prompts, choices or validation underneath a customer mid-conversation.
+
+## ADR-031 — Custom intents route but never authorize a response
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Owner-defined examples are matched deterministically using normalized text and a per-intent threshold. A match may start an explicitly published Flow or enrich AI context, but it cannot bypass conversation state, risk, PUBLIC grounding, conflicts, confidence or approval policy. Creation, editing, enablement and publication are explicit owner actions.
+
+## ADR-032 — M10 reminders are owner-only and one-shot
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Schedules store an owner timezone and an aware UTC instant. Delivery claims a due reminder before sending, disables it after success, and releases the claim after a confirmed failure. The claim is also a configurable lease so another worker can recover it after the first worker crashes; it is not a permanent lock. M10 does not schedule unsolicited customer follow-ups; adding those later requires a separate platform-window and consent decision.
+
+## ADR-033 — Safe AUTO uses the approval ledger without an owner card
+**Date:** 2026-08-22
+**Status:** Accepted
+
+When local policy returns AUTO_REPLY, the response still creates and atomically claims an Approval row, then records the outgoing message and a SYSTEM audit after Telegram confirms delivery. This reuses conversation revision, TTL and duplicate-send protections while omitting the manual approval card. Uncertain sends fail closed and are not retried blindly.
+
+## ADR-034 — Send authority is verified at the last responsible moment
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Cached Business Connection state is useful for ingestion but is not sufficient authority to send. AUTO and Flow delivery read the live Telegram connection immediately before sending, require the configured owner and `can_reply`, and fail closed otherwise. Flow choice callbacks are bound to the conversation Contact, and a human takeover or stricter conversation state cancels an active flow.

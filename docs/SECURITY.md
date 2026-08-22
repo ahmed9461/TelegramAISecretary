@@ -53,6 +53,7 @@
 - تغير السياق يبطل draft قديم.
 - فحص live `can_reply` قبل approved send.
 - one-shot claim يمنع الضغط المكرر من إرسال نفس approval أكثر من مرة.
+- AUTO الآمن يستخدم one-shot approval claim نفسه ويسجل actor=SYSTEM؛ لا يعتمد على model confidence وحدها، ويعيد فحص `can_reply` من Telegram لحظة الإرسال.
 - الإرسال غير المؤكد للعميل ينتقل إلى `UNCERTAIN` ولا يعاد عميانيًا.
 - retry الشبكي المضاف في M6 محصور بطلبات المالك/الإدارة حيث خطر تكرار الإجراء مقبول ومحدود؛ customer sends لا تدخل هذا retry العام.
 
@@ -72,6 +73,16 @@
 Callback query قد ينتهي سريعًا. handler يجب أن يجيب مبكرًا أو يستخدم `safe_callback_answer` بحيث لا يتحول `query is too old` إلى crash.
 
 تقييم الرد يتحقق من أن `callback.from_user.id` يطابق Contact الذي استلم Approval؛ المالك أو شخص آخر لا يستطيع تسجيل تقييم لذلك الرد. التقييم لا يمنح أي صلاحية إدارية ولا يفعّل تعلمًا تلقائيًا.
+
+## Automation boundaries
+
+- Flow لا يبدأ إلا إذا كان منشورًا لمالك المحادثة وحالتها تسمح بالأتمتة.
+- Flow يتوقف عند الاستلام البشري/الإيقاف/الاستبعاد، وخيار الزر يقبل فقط من Contact المرتبط بالمحادثة.
+- إرسال AUTO وخطوات Flow يفشل مغلقًا إذا تعذر التحقق الحي من مالك Business Connection أو صلاحية الرد.
+- الجلسة تحمل snapshot ولا تقرأ خطوات معدلة أثناء التنفيذ.
+- Custom Intent معطلة أو دون threshold لا توجه الرسالة، ولا تمنح صلاحية إرسال.
+- Schedule في M10 يرسل تذكيرًا للمالك فقط؛ claim بمهلة قابلة للضبط يمنع تعطله الدائم بعد انهيار العامل، ولا توجد customer follow-up مجدولة.
+- بيانات Flow تبقى في conversation-scoped session ولا تدخل Knowledge أو Memory تلقائيًا.
 
 ## قاعدة مراجعة أمنية
 

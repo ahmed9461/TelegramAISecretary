@@ -283,12 +283,29 @@ class FlowSession(Base):
     flow_version: Mapped[int] = mapped_column(Integer)
     current_step_key: Mapped[str] = mapped_column(String(128))
     collected_data_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    definition_json: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(32), default=FlowSessionStatus.ACTIVE.value)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Schedule(Base):
+    __tablename__ = "schedules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(32))
+    timezone: Mapped[str] = mapped_column(String(64))
+    config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Approval(Base):

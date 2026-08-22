@@ -8,7 +8,7 @@
 
 ثم افحص الكود والمigrations الفعلية قبل اقتراح schema أو إعادة هيكلة. لا تفترض أن وصفًا قديمًا في محادثة خارج Git أحدث من المستودع.
 
-الحالة المسجلة في 2026-08-22: M8 مدمج في `main` بالـSHA `00cbf898`، والتطوير الحالي M9 على `codex/m9-production-operations` برأس migration `0007`. التنفيذ والبوابة المحلية والتشغيلية/Telegram الحية مكتملة، وPR/CI والدمج هما خطوة الإغلاق التالية. تحقق دائمًا من Git/Alembic لأن هذه الجملة ستصبح تاريخية عند إغلاق المرحلة.
+الحالة المسجلة في 2026-08-22: M9 مدمج في `main` بالـSHA `8039d796`، والتطوير الحالي M10 على `codex/m10-advanced-automation` برأس migration `0008`. التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة، وCI التنفيذي لـPR #6 نجح؛ بقي CI تحديث دليل الإغلاق ثم الدمج. تحقق دائمًا من Git/Alembic لأن هذه الجملة ستصبح تاريخية عند إغلاق المرحلة.
 
 ## قواعد التنفيذ
 
@@ -34,6 +34,10 @@
 حدث التوثيق الذي تغير مع الكود. إذا تغير قرار معماري فأضف ADR. إذا تغير التشغيل فحدث RUNBOOK. إذا تغير وضع milestone فحدث PROJECT_MEMORY وPROGRESS وROADMAP.
 
 في M9 شغّل أيضًا `docker compose config -q`، build للصورة، production preflight، backup+restore rehearsal، وhealth/ready/metrics auth live. ميز بين نجاح إعداد development وبين readiness إنتاجية؛ `APP_ENV=production` وmetrics token قويان شرط نشر حقيقي.
+
+في M10 أضف Flow/Intent/Reminder/AUTO live gate على Contact تجريبي. أنشئ Flow كمسودة ثم Preview ثم Publish، وتحقق من snapshot الجلسة ومن وصول reminder مرة واحدة. AUTO لا يختبر على بيانات حقيقية حساسة ولا يفعّل على محادثة مشددة؛ نظف فقط IDs الاصطناعية الموثقة بعد القياس.
+
+إرسال AUTO/Flow يعيد فحص Business Connection و`can_reply` لحظة الإرسال. لا تحذف هذا الفحص لصالح الكاش. Reminder claim هي lease افتراضيًا 300 ثانية حتى يستطيع عامل جديد استرداد تذكير علق بعد انهيار العملية.
 
 ## عند عدم اليقين
 

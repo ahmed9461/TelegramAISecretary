@@ -78,12 +78,12 @@
 خطوات flow مثل ask text/choice/file أو complete.
 
 ### flow_sessions
-حالة تنفيذ flow لمحادثة محددة مع version/state/progress.
+حالة تنفيذ flow لمحادثة محددة مع version/state/progress. في M10 ينسخ `definition_json` التعريف المنشور وقت البدء، لذلك لا تغير نسخة أحدث جلسة جارية.
 
 ## Schedules
 
 ### schedules
-طبقة زمنية مستقبلية/تشغيلية حسب ما هو معرف في schema الحالي. لا تعتبر أي ميزة schedule مكتملة لمجرد وجود الجدول.
+تذكير أو إعداد زمني مرتبط بالمالك. M10 تنفذ `REMINDER` one-shot مع timezone وconfig آمن و`last_run_at` للـclaim ومنع التكرار. التذكيرات الحالية للمالك فقط.
 
 ## قواعد ownership والعزل
 
@@ -102,5 +102,6 @@
 - `0005_m7_approval_provenance`
 - `0006_m8_memory_intelligence`
 - `0007_m9_production_observability`
+- `0008_m10_advanced_automation`
 
 قبل إنشاء migration جديد: افحص رأس Alembic الحالي والموديلات الموجودة، ولا تنشئ جدولًا مكررًا لمفهوم موجود أصلًا.

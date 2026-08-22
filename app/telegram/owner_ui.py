@@ -16,11 +16,14 @@ def main_admin_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🧩 الواجهة والأزرار", callback_data="interface:home"),
         ],
         [
-            InlineKeyboardButton(text="⚙️ السلوك", callback_data="behavior:home"),
+            InlineKeyboardButton(text="🧭 الأتمتة", callback_data="automation:home"),
             InlineKeyboardButton(text="⏰ الأوقات", callback_data="a:schedules"),
         ],
         [
+            InlineKeyboardButton(text="⚙️ السلوك", callback_data="behavior:home"),
             InlineKeyboardButton(text="📊 الإحصائيات", callback_data="a:stats"),
+        ],
+        [
             InlineKeyboardButton(text="🛡️ الأمان", callback_data="a:security"),
         ],
         [InlineKeyboardButton(text="⏸ إيقاف السكرتير", callback_data="a:pause")],

@@ -57,7 +57,7 @@
 
 ## M9 — Production Operations
 
-الحالة: **منفذ واجتاز البوابة المحلية والتشغيلية الحية وCI الأول؛ PR #5 والدمج النهائي قيد الإغلاق**.
+الحالة: **مكتمل ومندمج في main عبر PR #5**.
 
 - deployment موثق على Ubuntu باستخدام systemd/Docker، مع migration service وصورة غير جذرية.
 - liveness وreadiness حقيقية، trace IDs، وسجلات JSON مع تنقية الأسرار.
@@ -66,17 +66,19 @@
 - backup PostgreSQL بصيغة custom مع checksum وretention وبروفة restore في قاعدة معزولة.
 - runbooks للأعطال الشائعة وproduction preflight للمزودات وقاعدة البيانات.
 - تدوير ذري لأسرار PostgreSQL/metrics وإجراء موثق لبقية مزودي الخدمات.
-- GitHub Actions run `32544367834` نجح على Python 3.12 و3.13، مع بناء صورة الإنتاج في مهمة 3.12؛ إعادة البوابة بعد توثيق الإصدار مطلوبة قبل الدمج.
+- GitHub Actions run `32544458281` نجح على Python 3.12 و3.13 بعد توثيق الإصدار، ثم اندمج PR #5 بالـSHA `8039d79618eb836ffdcef9c6c221fb8b1ab2798f`.
 
 ## M10 — Advanced Automation
 
-المرحلة التالية بعد دمج M9، وتنفذ ضمن نطاق القياسات والحالات القابلة لإثبات الحاجة.
+الحالة: **منفذ واجتاز البوابات المحلية والتشغيلية وTelegram الحية وCI التنفيذي عبر PR #6؛ بقي CI دليل الإغلاق ثم الدمج**.
 
 - Flows فعلية أكثر من primitives الحالية.
 - schedules/reminders عند وجود use case واضح.
 - custom intents management متقدم.
 - confidence-based AUTO أوسع بعد evals كافية.
 - adapters لقنوات أخرى مع الحفاظ على نفس Core.
+
+تحقق النطاق عبر Core مستقل في `flows/` و`intents/` و`schedules/`، وTelegram Adapter مسؤول عن العرض والإرسال. لا يوجد WhatsApp implementation في M10؛ قابلية الإضافة محفوظة دون ادعاء دعم قناة غير منفذة.
 
 ## قاعدة التخطيط
 

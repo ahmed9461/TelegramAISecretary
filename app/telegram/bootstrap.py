@@ -6,7 +6,14 @@ from uuid import uuid4
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Message
+from aiogram.types import (
+    BusinessConnection,
+    BusinessMessagesDeleted,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 from sqlalchemy import select
 
 from app.ai.factory import build_multimodal_pipeline, build_text_pipeline
@@ -15,6 +22,7 @@ from app.approvals.service import (
     claim_for_send,
     create_approval,
     format_approval_reason,
+    mark_failed_before_send,
     mark_sent,
     mark_uncertain,
     preview_claim,
@@ -24,8 +32,8 @@ from app.config import get_settings
 from app.conversations.context import build_ai_context
 from app.conversations.ingest import ingest_message
 from app.conversations.search import search_messages
-from app.db.enums import ConversationState, DecisionAction
-from app.db.models import Contact, Conversation
+from app.db.enums import ConversationState, DecisionAction, FlowSessionStatus, GlobalMode
+from app.db.models import Contact, Conversation, FlowSession
 from app.db.models import Message as DBMessage
 from app.db.repositories import (
     ApprovalRepository,
@@ -35,6 +43,15 @@ from app.db.repositories import (
 )
 from app.db.session import SessionLocal
 from app.feedback.service import should_prompt_feedback
+from app.flows.service import (
+    FlowAutomationBlockedError,
+    FlowTurn,
+    active_flow_session,
+    cancel_active_flow,
+    start_flow,
+    submit_flow_value,
+)
+from app.intents.service import match_custom_intent, normalize_utterance
 from app.knowledge.admin import (
     add_knowledge,
     delete_knowledge,
@@ -54,6 +71,13 @@ router = Router(name="secretary")
 settings = get_settings()
 guard = OwnerGuard(settings.owner_telegram_id)
 debouncer = DebounceRegistry()
+
+_AUTOMATION_BLOCKED_STATES = {
+    ConversationState.HUMAN_TAKEOVER.value,
+    ConversationState.EXCLUDED.value,
+    ConversationState.PAUSED.value,
+    ConversationState.OBSERVE_ONLY.value,
+}
 
 
 def _knowledge_reference_ids(context: dict) -> list[int]:
@@ -181,6 +205,28 @@ async def _ensure_business_connection(bot: Bot, connection_id: str) -> bool:
     return bool(ok and connection.is_enabled)
 
 
+async def _live_reply_permission(bot: Bot, connection_id: str) -> tuple[bool, str]:
+    """Fail closed unless Telegram confirms reply rights at send time."""
+    try:
+        connection = await bot.get_business_connection(
+            business_connection_id=connection_id
+        )
+    except Exception:
+        logger.exception("business_connection_send_check_failed connection=%s", connection_id)
+        return False, "CONNECTION_CHECK_FAILED"
+    if connection.user.id != settings.owner_telegram_id:
+        logger.warning(
+            "business_connection_send_owner_mismatch connection=%s owner=%s",
+            connection_id,
+            connection.user.id,
+        )
+        return False, "CONNECTION_OWNER_MISMATCH"
+    _persist_business_connection(connection)
+    if not _can_reply(connection):
+        return False, "REPLY_RIGHTS_UNAVAILABLE"
+    return True, "OK"
+
+
 async def _set_card_status(callback: CallbackQuery, status_text: str) -> None:
     message = callback.message
     if message is None or not getattr(message, "text", None):
@@ -201,10 +247,21 @@ async def owner_start(message: Message) -> None:
         return
     image_service = "🟢 جاهزة" if settings.multimodal_configured else "⚪ غير مهيأة"
     reply_service = "🟢 جاهزة" if settings.text_ai_configured else "⚪ غير مهيأة"
+    with SessionLocal() as session:
+        owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+        mode = owner.default_mode
+        session.commit()
+    mode_label = {
+        GlobalMode.AUTO.value: "🟢 تلقائي ضمن حدود الأمان",
+        GlobalMode.APPROVAL.value: "🟡 موافقة قبل الإرسال",
+        GlobalMode.OBSERVE.value: "👁 مراقبة فقط",
+        GlobalMode.OFF.value: "⛔ متوقف",
+    }.get(mode, "🟡 موافقة قبل الإرسال")
+    status_label = "⛔ متوقف" if mode == GlobalMode.OFF.value else "🟢 يعمل"
     await message.answer(
         "🧑‍💼 السكرتير\n\n"
-        "الحالة: 🟢 يعمل\n"
-        "الوضع: 🟡 موافقة قبل الإرسال\n"
+        f"الحالة: {status_label}\n"
+        f"الوضع: {mode_label}\n"
         f"صياغة الردود: {reply_service}\n"
         f"فهم الصور: {image_service}\n\n"
         "يمكنك إدارة الهوية والمعرفة والسياسات من الأزرار أدناه.",
@@ -378,13 +435,97 @@ async def approval_callbacks(callback: CallbackQuery, bot: Bot) -> None:
     await _set_card_status(callback, "✅ تم الإرسال")
 
 
+@router.callback_query(F.data.startswith("flow:choice:"))
+async def flow_choice_callback(callback: CallbackQuery, bot: Bot) -> None:
+    parts = (callback.data or "").split(":")
+    if len(parts) != 4 or not parts[2].isdigit() or not parts[3].isdigit():
+        await callback.answer("هذا الخيار لم يعد صالحًا.", show_alert=True)
+        return
+    if callback.message is None:
+        await callback.answer()
+        return
+    session_id = int(parts[2])
+    choice_index = int(parts[3])
+    connection_id = getattr(callback.message, "business_connection_id", None)
+    if not connection_id:
+        await callback.answer("تعذر متابعة الإجراء من هذه الرسالة.", show_alert=True)
+        return
+
+    with SessionLocal() as session:
+        conversation = ConversationRepository.get_by_chat(
+            session,
+            owner_id=OwnerRepository.get_or_create(
+                session, settings.owner_telegram_id
+            ).id,
+            chat_id=callback.message.chat.id,
+        )
+        active = (
+            active_flow_session(session, conversation_id=conversation.id)
+            if conversation is not None
+            else None
+        )
+        if active is None or active.id != session_id:
+            await callback.answer("انتهى هذا الإجراء أو تغيرت خطوته.", show_alert=True)
+            return
+        contact = session.get(Contact, conversation.contact_id)
+        if contact is None or contact.telegram_user_id != callback.from_user.id:
+            await callback.answer("هذا الخيار مخصص لصاحب المحادثة.", show_alert=True)
+            return
+        if conversation.state in _AUTOMATION_BLOCKED_STATES:
+            cancel_active_flow(session, conversation_id=conversation.id)
+            session.commit()
+            await callback.answer("أوقف المسؤول هذا الإجراء للمتابعة المباشرة.", show_alert=True)
+            return
+        definition = dict(active.definition_json or {})
+        current = next(
+            (
+                item
+                for item in definition.get("steps") or []
+                if item.get("key") == active.current_step_key
+            ),
+            {},
+        )
+        choices = [str(value) for value in current.get("choices") or []]
+        if choice_index >= len(choices):
+            await callback.answer("هذا الخيار لم يعد متاحًا.", show_alert=True)
+            return
+        try:
+            turn = submit_flow_value(
+                session,
+                conversation=conversation,
+                value=choices[choice_index],
+            )
+        except FlowAutomationBlockedError:
+            session.commit()
+            await callback.answer("أوقف المسؤول هذا الإجراء للمتابعة المباشرة.", show_alert=True)
+            return
+        except ValueError:
+            await callback.answer("تعذر قبول الخيار. حاول مرة أخرى.", show_alert=True)
+            return
+        session.commit()
+        conversation_id = conversation.id
+
+    await callback.answer("تم اختيار الإجابة")
+    if callback.message:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            logger.debug("flow_choice_markup_clear_failed", exc_info=True)
+    if turn is not None:
+        await _send_flow_turn(
+            bot,
+            connection_id=connection_id,
+            conversation_id=conversation_id,
+            turn=turn,
+        )
+
+
 @router.callback_query(
     F.data.in_(
         {
             "a:conversations",
             "a:pending",
             "a:contacts",
-            "a:schedules",
             "a:security",
             "a:pause",
         }
@@ -486,6 +627,225 @@ async def _send_approval_card(bot: Bot, *, approval_id: int, text: str) -> None:
             owner_chat_id=settings.owner_telegram_id,
             owner_message_id=owner_message.message_id,
         )
+
+
+def _flow_keyboard(turn: FlowTurn) -> InlineKeyboardMarkup | None:
+    if not turn.choices:
+        return None
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=choice[:64],
+                    callback_data=f"flow:choice:{turn.session_id}:{index}",
+                )
+            ]
+            for index, choice in enumerate(turn.choices[:20])
+        ]
+    )
+
+
+async def _send_flow_turn(
+    bot: Bot,
+    *,
+    connection_id: str,
+    conversation_id: int,
+    turn: FlowTurn,
+) -> None:
+    with SessionLocal() as session:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None:
+            return
+        chat_id = conversation.telegram_chat_id
+        contact = session.get(Contact, conversation.contact_id)
+        contact_name = contact.display_name if contact else "عميل"
+        flow_session = session.get(FlowSession, turn.session_id)
+        if conversation.state in _AUTOMATION_BLOCKED_STATES and not turn.handoff:
+            if flow_session is not None:
+                flow_session.status = FlowSessionStatus.CANCELLED.value
+                session.commit()
+            return
+        step_labels = {
+            str(item.get("key")): str(item.get("prompt") or item.get("key"))
+            for item in ((flow_session.definition_json or {}).get("steps") if flow_session else [])
+        }
+        if turn.handoff:
+            conversation.state = ConversationState.HUMAN_TAKEOVER.value
+            conversation.revision += 1
+            session.commit()
+
+    can_send, blocked_reason = await _live_reply_permission(bot, connection_id)
+    if not can_send:
+        with SessionLocal() as session:
+            flow_session = session.get(FlowSession, turn.session_id)
+            if flow_session is not None:
+                flow_session.status = FlowSessionStatus.FAILED.value
+                session.commit()
+        logger.warning(
+            "flow_delivery_blocked flow_session=%s reason=%s",
+            turn.session_id,
+            blocked_reason,
+        )
+        try:
+            await bot.send_message(
+                chat_id=settings.owner_telegram_id,
+                text=(
+                    "⚠️ لم أرسل خطوة الإجراء لأن صلاحية الرد في Telegram "
+                    "غير متاحة حاليًا. راجع اتصال Telegram Business ثم أعد بدء الإجراء."
+                ),
+            )
+        except Exception:
+            logger.exception("flow_delivery_block_notice_failed session=%s", turn.session_id)
+        return
+
+    adapter = AiogramTelegramAdapter(bot)
+    try:
+        sent_id = await adapter.send_text(
+            business_connection_id=connection_id,
+            chat_id=chat_id,
+            text=turn.prompt,
+            reply_markup=_flow_keyboard(turn),
+            attach_default_menu=turn.completed,
+        )
+    except Exception:
+        with SessionLocal() as session:
+            flow_session = session.get(FlowSession, turn.session_id)
+            if flow_session is not None:
+                flow_session.status = FlowSessionStatus.FAILED.value
+                session.commit()
+        logger.exception("flow_delivery_uncertain flow_session=%s", turn.session_id)
+        try:
+            await bot.send_message(
+                chat_id=settings.owner_telegram_id,
+                text=(
+                    "⚠️ تعذر تأكيد إرسال خطوة الإجراء. لم أكرر الإرسال تلقائيًا "
+                    "حتى لا تصل الرسالة مرتين."
+                ),
+            )
+        except Exception:
+            logger.exception("flow_delivery_uncertain_notice_failed session=%s", turn.session_id)
+        return
+    with SessionLocal() as session:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is not None:
+            ConversationRepository.append_outgoing(
+                session,
+                conversation=conversation,
+                telegram_message_id=sent_id,
+                text=turn.prompt,
+            )
+            session.commit()
+
+    if turn.completed:
+        details = "\n".join(
+            f"• {step_labels.get(key, 'معلومة')}: {value}"
+            for key, value in (turn.collected_data or {}).items()
+        )
+        summary = (
+            f"✅ اكتمل إجراء «{turn.flow_name}»\n\n"
+            f"👤 {contact_name}\n"
+            f"المحادثة: {chat_id}"
+        )
+        if details:
+            summary += f"\n\nالبيانات المجمعة:\n{details}"
+        await bot.send_message(chat_id=settings.owner_telegram_id, text=summary[:4000])
+
+
+async def _route_message_to_automation(
+    *,
+    message: Message,
+    bot: Bot,
+    connection_id: str,
+    conversation_id: int,
+) -> bool:
+    text = (message.text or message.caption or "").strip()
+    with SessionLocal() as session:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None:
+            return False
+        active = active_flow_session(session, conversation_id=conversation.id)
+        if active is not None:
+            if conversation.state in _AUTOMATION_BLOCKED_STATES:
+                cancel_active_flow(session, conversation_id=conversation.id)
+                session.commit()
+                return False
+            if normalize_utterance(text) in {"الغاء", "cancel"}:
+                cancel_active_flow(session, conversation_id=conversation.id)
+                session.commit()
+                turn = FlowTurn(
+                    session_id=active.id,
+                    flow_id=active.flow_id,
+                    flow_name="الإجراء",
+                    prompt="تم إلغاء الإجراء. يمكنك كتابة طلبك من جديد في أي وقت.",
+                    completed=True,
+                )
+            else:
+                try:
+                    turn = submit_flow_value(
+                        session,
+                        conversation=conversation,
+                        value=text,
+                    )
+                except FlowAutomationBlockedError:
+                    session.commit()
+                    return False
+                except ValueError:
+                    definition = dict(active.definition_json or {})
+                    current = next(
+                        (
+                            item
+                            for item in definition.get("steps") or []
+                            if item.get("key") == active.current_step_key
+                        ),
+                        {},
+                    )
+                    prompt = str(current.get("prompt") or "أعد إرسال الإجابة بصيغة واضحة.")
+                    choices = tuple(str(value) for value in current.get("choices") or [])
+                    turn = FlowTurn(
+                        session_id=active.id,
+                        flow_id=active.flow_id,
+                        flow_name="الإجراء",
+                        prompt=f"لم أتمكن من قبول الإجابة.\n\n{prompt}",
+                        choices=choices,
+                    )
+                session.commit()
+            if turn is None:
+                return False
+        else:
+            if not text:
+                return False
+            matched = match_custom_intent(
+                session,
+                owner_id=conversation.owner_id,
+                text=text,
+            )
+            if matched is None or matched.action_type != "START_FLOW":
+                return False
+            raw_flow_id = matched.action_config.get("flow_id")
+            if not isinstance(raw_flow_id, int) and not str(raw_flow_id).isdigit():
+                return False
+            try:
+                turn = start_flow(
+                    session,
+                    conversation=conversation,
+                    flow_id=int(raw_flow_id),
+                )
+            except ValueError:
+                logger.warning(
+                    "custom_intent_flow_unavailable intent=%s conversation=%s",
+                    matched.intent_id,
+                    conversation.id,
+                )
+                return False
+            session.commit()
+
+    await _send_flow_turn(
+        bot,
+        connection_id=connection_id,
+        conversation_id=conversation_id,
+        turn=turn,
+    )
+    return True
 
 
 async def _process_text_for_approval(
@@ -604,6 +964,84 @@ async def _process_text_for_approval(
                 "لم يتم إرسال رد تلقائي."
             ),
         )
+        return
+
+    if result.decision.action == DecisionAction.AUTO_REPLY:
+        with SessionLocal() as session:
+            conversation = session.get(Conversation, conversation_id)
+            if conversation is None or conversation.revision != expected_revision:
+                return
+            approval = create_approval(
+                session,
+                conversation=conversation,
+                trigger_message_id=trigger_message_id,
+                candidate_response=result.candidate_reply,
+                reason=format_approval_reason(
+                    source="TEXT_AUTO",
+                    reason_code=result.decision.reason_code,
+                    intent=result.decision.intent,
+                ),
+                context=_approval_context(intent=result.decision.intent, context=context),
+                ttl_hours=settings.approval_ttl_hours,
+            )
+        with SessionLocal() as session:
+            claim = claim_for_send(session, approval.id)
+        if claim is None:
+            return
+        can_send, blocked_reason = await _live_reply_permission(
+            bot, claim.business_connection_id
+        )
+        if not can_send:
+            with SessionLocal() as session:
+                mark_failed_before_send(session, approval.id, reason=blocked_reason)
+            await bot.send_message(
+                chat_id=settings.owner_telegram_id,
+                text=(
+                    "⚠️ لم أرسل الرد التلقائي لأن صلاحية الرد في Telegram "
+                    "غير متاحة حاليًا. لم تتم إعادة المحاولة تلقائيًا."
+                ),
+            )
+            return
+        with SessionLocal() as session:
+            request_feedback = settings.feedback_buttons_enabled and should_prompt_feedback(
+                session,
+                conversation_id=claim.conversation_id,
+                interval=settings.feedback_prompt_every_n_responses,
+            )
+        try:
+            sent_message_id = await adapter.send_text(
+                business_connection_id=claim.business_connection_id,
+                chat_id=claim.chat_id,
+                text=claim.text,
+                intent=claim.intent,
+                feedback_approval_id=approval.id if request_feedback else None,
+            )
+        except Exception:
+            logger.exception(
+                "automatic_send_uncertain conversation=%s approval=%s",
+                conversation_id,
+                approval.id,
+                extra={"trace_id": trace_id, "operation": "TEXT_RESPONSE"},
+            )
+            with SessionLocal() as session:
+                mark_uncertain(session, approval.id)
+            await bot.send_message(
+                chat_id=settings.owner_telegram_id,
+                text=(
+                    "⚠️ تعذر تأكيد إرسال رد تلقائي.\n"
+                    f"المحادثة: {chat_id}\n"
+                    "لم تتم إعادة المحاولة تلقائيًا حتى لا يتكرر الرد."
+                ),
+            )
+            return
+        with SessionLocal() as session:
+            mark_sent(
+                session,
+                approval.id,
+                telegram_message_id=sent_message_id,
+                actor="SYSTEM",
+                audit_action="AUTOMATIC_RESPONSE_SENT",
+            )
         return
 
     with SessionLocal() as session:
@@ -867,6 +1305,14 @@ async def on_business_message(message: Message, bot: Bot) -> None:
     )
 
     key = (connection_id, message.chat.id)
+    if message.text and await _route_message_to_automation(
+        message=message,
+        bot=bot,
+        connection_id=connection_id,
+        conversation_id=result.conversation.id,
+    ):
+        debouncer.cancel(key)
+        return
     if message.photo:
         debouncer.schedule(
             key,

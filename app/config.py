@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     memory_suggestion_ttl_hours: int = 72
     feedback_buttons_enabled: bool = True
     feedback_prompt_every_n_responses: int = 3
+    custom_intent_default_threshold: float = 0.82
+    schedule_poll_seconds: float = 30.0
+    schedule_batch_size: int = 20
+    schedule_claim_timeout_seconds: int = 300
 
     deepseek_api_key: str = Field(default="", repr=False)
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -79,6 +83,10 @@ class Settings(BaseSettings):
             and self.vision_provider == "gemini"
             and self.gemini_api_key
         )
+
+    @property
+    def bounded_custom_intent_threshold(self) -> float:
+        return max(0.5, min(1.0, self.custom_intent_default_threshold))
 
 
 @lru_cache

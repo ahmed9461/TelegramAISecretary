@@ -10,10 +10,11 @@ from sqlalchemy import func, select
 
 from app.audit.service import write_audit_log
 from app.config import get_settings
-from app.db.enums import ConversationState, InterfaceMode
-from app.db.models import MenuItem
+from app.db.enums import ConversationState, FlowStatus, InterfaceMode
+from app.db.models import Flow, MenuItem
 from app.db.repositories import ConversationRepository, OwnerRepository
 from app.db.session import SessionLocal
+from app.flows.service import start_flow
 from app.interface.menus import MenuAction
 from app.interface.service import get_owned_menu_item, list_menu_items
 from app.security.owner import OwnerGuard
@@ -64,7 +65,10 @@ def _home_keyboard(profile_mode: str, rows: list[MenuItem]) -> InlineKeyboardMar
             InlineKeyboardButton(text="➕ رد ثابت", callback_data="interface:add:SEND_MESSAGE"),
             InlineKeyboardButton(text="➕ رابط", callback_data="interface:add:OPEN_URL"),
         ],
-        [InlineKeyboardButton(text="➕ تحويل لي", callback_data="interface:add:HANDOFF")],
+        [
+            InlineKeyboardButton(text="➕ إجراء", callback_data="interface:add-flow"),
+            InlineKeyboardButton(text="➕ تحويل لي", callback_data="interface:add:HANDOFF"),
+        ],
     ]
     for row in rows[:12]:
         icon = {
@@ -171,6 +175,89 @@ async def interface_add(callback: CallbackQuery, state: FSMContext) -> None:
     if callback.message:
         await callback.message.answer("اكتب اسم الزر كما سيظهر للعميل، ويمكنك بدء الاسم بإيموجي:")
     await safe_callback_answer(callback)
+
+
+@router.callback_query(F.data == "interface:add-flow")
+async def interface_add_flow(callback: CallbackQuery) -> None:
+    if not _is_owner(callback.from_user.id):
+        await safe_callback_answer(callback)
+        return
+    with SessionLocal() as session:
+        owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+        flows = list(
+            session.scalars(
+                select(Flow).where(
+                    Flow.owner_id == owner.id,
+                    Flow.status == FlowStatus.PUBLISHED.value,
+                )
+            )
+        )
+    if callback.message:
+        if not flows:
+            await callback.message.answer(
+                "لا توجد إجراءات منشورة بعد. أنشئ الإجراء واختبره وانشره من قسم الأتمتة أولًا."
+            )
+        else:
+            await callback.message.answer(
+                "اختر الإجراء الذي تريد إظهاره كزر للعميل:",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text=flow.name[:60],
+                                callback_data=f"interface:add-flow:{flow.id}",
+                            )
+                        ]
+                        for flow in flows[:20]
+                    ]
+                ),
+            )
+    await safe_callback_answer(callback)
+
+
+@router.callback_query(F.data.startswith("interface:add-flow:"))
+async def interface_add_flow_value(callback: CallbackQuery) -> None:
+    if not _is_owner(callback.from_user.id):
+        await safe_callback_answer(callback)
+        return
+    raw_id = (callback.data or "").rsplit(":", 1)[-1]
+    if not raw_id.isdigit():
+        await safe_callback_answer(callback, "اختيار غير صالح.", show_alert=True)
+        return
+    with SessionLocal() as session:
+        owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+        flow = session.scalar(
+            select(Flow).where(
+                Flow.id == int(raw_id),
+                Flow.owner_id == owner.id,
+                Flow.status == FlowStatus.PUBLISHED.value,
+            )
+        )
+        if flow is None:
+            await safe_callback_answer(callback, "الإجراء غير متاح.", show_alert=True)
+            return
+        profile, _ = list_menu_items(session, owner_id=owner.id)
+        active_count = int(
+            session.scalar(
+                select(func.count(MenuItem.id)).where(MenuItem.menu_profile_id == profile.id)
+            )
+            or 0
+        )
+        row = MenuItem(
+            menu_profile_id=profile.id,
+            parent_item_id=None,
+            label=flow.name[:128],
+            emoji="🧭",
+            action_type=MenuAction.START_FLOW.value,
+            action_config_json={"flow_id": flow.id},
+            row_index=active_count // 2,
+            sort_order=active_count,
+            visibility_rules_json={"mode": "ALWAYS"},
+            enabled=True,
+        )
+        session.add(row)
+        session.commit()
+    await safe_callback_answer(callback, "تمت إضافة زر الإجراء")
 
 
 @router.message(InterfaceStates.button_label)
@@ -402,4 +489,43 @@ async def customer_menu_action(callback: CallbackQuery, bot: Bot) -> None:
         await bot.send_message(
             chat_id=settings.owner_telegram_id,
             text=f"👤 طلب العميل متابعة بشرية\nالمحادثة: {chat.id}",
+        )
+        return
+
+    if item.action_type == MenuAction.START_FLOW.value:
+        raw_flow_id = config.get("flow_id")
+        if not isinstance(raw_flow_id, int) and not str(raw_flow_id).isdigit():
+            return
+        with SessionLocal() as session:
+            owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
+            conversation = ConversationRepository.get_by_chat(
+                session,
+                owner_id=owner.id,
+                chat_id=chat.id,
+            )
+            if conversation is None:
+                return
+            try:
+                turn = start_flow(
+                    session,
+                    conversation=conversation,
+                    flow_id=int(raw_flow_id),
+                )
+            except ValueError:
+                await adapter.send_text(
+                    business_connection_id=business_connection_id,
+                    chat_id=chat.id,
+                    text="هذا الإجراء غير متاح حاليًا. اكتب طلبك وسيتابعك السكرتير.",
+                    attach_default_menu=False,
+                )
+                return
+            session.commit()
+            conversation_id = conversation.id
+        from app.telegram.bootstrap import _send_flow_turn
+
+        await _send_flow_turn(
+            bot,
+            connection_id=business_connection_id,
+            conversation_id=conversation_id,
+            turn=turn,
         )

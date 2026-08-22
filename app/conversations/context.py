@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.brain.service import build_brain_context
 from app.db.enums import ConversationState, GlobalMode, Visibility
-from app.db.models import Conversation, Message, Owner
+from app.db.models import Conversation, CustomIntent, Message, Owner
+from app.intents.service import match_custom_intent
 from app.knowledge.retrieval import KnowledgeHit, retrieve_knowledge
 from app.security.untrusted import wrap_untrusted
 
@@ -104,6 +105,22 @@ def build_ai_context(
         owner_id=conversation.owner_id,
         contact_id=conversation.contact_id,
     )
+    custom_intents = list(
+        session.scalars(
+            select(CustomIntent)
+            .where(
+                CustomIntent.owner_id == conversation.owner_id,
+                CustomIntent.enabled.is_(True),
+            )
+            .order_by(CustomIntent.id)
+            .limit(30)
+        )
+    )
+    matched_intent = match_custom_intent(
+        session,
+        owner_id=conversation.owner_id,
+        text=query,
+    )
 
     return BuiltContext(
         payload={
@@ -117,6 +134,22 @@ def build_ai_context(
             "has_public_grounding": has_public_grounding,
             "has_conflicting_grounding": has_conflicting_grounding,
             "retrieval_confidence": min(1.0, confidence),
+            "custom_intents": [
+                {
+                    "name": row.name,
+                    "description": row.description,
+                    "examples": list(row.examples_json or [])[:8],
+                }
+                for row in custom_intents
+            ],
+            "matched_custom_intent": (
+                {
+                    "name": matched_intent.name,
+                    "confidence": matched_intent.score,
+                }
+                if matched_intent is not None
+                else None
+            ),
             **brain_context,
         },
         knowledge_hits=tuple(hits),

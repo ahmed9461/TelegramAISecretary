@@ -11,6 +11,7 @@ class StepType(StrEnum):
     ASK_NUMBER = "ASK_NUMBER"
     ASK_DATE = "ASK_DATE"
     ASK_FILE = "ASK_FILE"
+    ASK_CONTACT_DATA = "ASK_CONTACT_DATA"
     SHOW_KNOWLEDGE = "SHOW_KNOWLEDGE"
     AI_STEP = "AI_STEP"
     HANDOFF = "HANDOFF"
@@ -35,6 +36,8 @@ class FlowDefinition:
     steps: dict[str, FlowStepDef]
 
     def validate(self) -> None:
+        if not self.steps:
+            raise ValueError("flow has no steps")
         if self.entry_key not in self.steps:
             raise ValueError("entry step does not exist")
         for step in self.steps.values():
@@ -42,6 +45,15 @@ class FlowDefinition:
                 raise ValueError(f"missing next step: {step.next_key}")
             if step.type == StepType.ASK_CHOICE and not step.choices:
                 raise ValueError(f"choice step {step.key} has no choices")
+            if step.type in {
+                StepType.ASK_TEXT,
+                StepType.ASK_CHOICE,
+                StepType.ASK_NUMBER,
+                StepType.ASK_DATE,
+                StepType.ASK_FILE,
+                StepType.ASK_CONTACT_DATA,
+            } and not step.prompt.strip():
+                raise ValueError(f"input step {step.key} has no prompt")
 
 
 @dataclass(slots=True)
@@ -71,6 +83,7 @@ class FlowRuntime:
             StepType.ASK_NUMBER,
             StepType.ASK_DATE,
             StepType.ASK_FILE,
+            StepType.ASK_CONTACT_DATA,
             StepType.ASK_CHOICE,
         }:
             if step.required and (value is None or value == ""):
