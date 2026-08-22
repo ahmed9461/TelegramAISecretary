@@ -7,6 +7,7 @@ from app.telegram.behavior_ui import router as behavior_router
 from app.telegram.bootstrap import build_dispatcher
 from app.telegram.brain_ui import router as brain_router
 from app.telegram.bulk_knowledge_ui import router as bulk_knowledge_router
+from app.telegram.feedback_ui import router as feedback_router
 from app.telegram.interface_ui import router as interface_router
 from app.telegram.knowledge_manage_ui import router as knowledge_manage_router
 from app.telegram.memory_ui import router as memory_router
@@ -24,9 +25,10 @@ async def main() -> None:
         owner_chat_id=settings.owner_telegram_id,
     )
     dp = build_dispatcher()
-    # Specialized M6 routers are registered before the generic brain router so they can
-    # provide richer management screens for callbacks that existed as simple M5 placeholders.
+    # Specialized routers are registered before the generic brain router so current management
+    # screens handle their callbacks instead of older placeholders.
     dp.include_router(approval_edit_router)
+    dp.include_router(feedback_router)
     dp.include_router(behavior_router)
     dp.include_router(memory_router)
     dp.include_router(knowledge_manage_router)

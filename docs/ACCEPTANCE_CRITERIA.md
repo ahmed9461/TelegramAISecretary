@@ -130,4 +130,21 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - isolated PostgreSQL upgrade/downgrade/re-upgrade: PASS.
 - Telegram live: import/duplicate/conflict/provenance/version/rollback/professional copy: PASS.
 - CI البعيد run `32538952535`: Python 3.12/3.13 PASS.
-- دمج PR #3 يبقى مطلوبًا قبل إعلان M7 مندمجة.
+- اكتمل CI واندَمج PR #3 في `main`.
+
+## M8 — Memory Intelligence & Feedback
+
+- [x] اقتراح المحادثة لا يكتب ContactMemory قبل موافقة المالك.
+- [x] اعتماد/رفض/انتهاء/استبدال الاقتراحات محكوم بالمالك وownership checks.
+- [x] facts/preferences/summary تحمل provenance وconfidence وretention.
+- [x] private_notes لا تدخل LLM، والذاكرة المنتهية أو غير المشتركة مستبعدة.
+- [x] تنقية محلية تمنع الأسرار وOTP وبيانات الدفع والصحة من الذاكرة المشتركة.
+- [x] تحرير وتصدير ومسح مؤكد من واجهة عربية مهنية.
+- [x] تقييم 1–5 لا يقبله إلا مستلم الرد، والتكرار قابل للضبط.
+- [x] لوحة المالك تعرض متوسط وتوزيع رضا العملاء.
+- [x] التقييم لا يسبب تعلمًا صامتًا.
+- [x] migration `0006` اجتازت بروفة upgrade/downgrade/re-upgrade معزولة.
+- [x] Telegram live gate نجحت، ثم نُظفت البيانات الاصطناعية فقط.
+- [x] محليًا: 83 passed، compileall وRuff correctness و14/14 retrieval regression.
+- [x] CI Python 3.12/3.13 في run `32541333524`.
+- [ ] دمج PR #4.

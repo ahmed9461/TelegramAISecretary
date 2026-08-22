@@ -32,6 +32,7 @@ from app.db.repositories import (
     OwnerRepository,
 )
 from app.db.session import SessionLocal
+from app.feedback.service import should_prompt_feedback
 from app.knowledge.admin import (
     add_knowledge,
     delete_knowledge,
@@ -290,12 +291,19 @@ async def approval_callbacks(callback: CallbackQuery, bot: Bot) -> None:
         return
 
     adapter = AiogramTelegramAdapter(bot)
+    with SessionLocal() as session:
+        request_feedback = settings.feedback_buttons_enabled and should_prompt_feedback(
+            session,
+            conversation_id=claim.conversation_id,
+            interval=settings.feedback_prompt_every_n_responses,
+        )
     try:
         sent_message_id = await adapter.send_text(
             business_connection_id=claim.business_connection_id,
             chat_id=claim.chat_id,
             text=claim.text,
             intent=claim.intent,
+            feedback_approval_id=approval_id if request_feedback else None,
         )
     except Exception:
         logger.exception("approval_send_uncertain approval=%s", approval_id)
@@ -311,7 +319,18 @@ async def approval_callbacks(callback: CallbackQuery, bot: Bot) -> None:
     await _set_card_status(callback, "✅ تم الإرسال")
 
 
-@router.callback_query(F.data.startswith("a:"))
+@router.callback_query(
+    F.data.in_(
+        {
+            "a:conversations",
+            "a:pending",
+            "a:contacts",
+            "a:schedules",
+            "a:security",
+            "a:pause",
+        }
+    )
+)
 async def owner_callbacks(callback: CallbackQuery) -> None:
     if not guard.is_owner(callback.from_user.id):
         await callback.answer()

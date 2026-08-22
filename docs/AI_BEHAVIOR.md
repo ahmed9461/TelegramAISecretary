@@ -64,6 +64,12 @@ DeepSeek يستخدم كـextractor منفصل لتقسيم مصدر كبير إ
 - إخراج types من GENERAL/SERVICE/PRODUCT/PRICE/FAQ/POLICY/CUSTOM.
 - إزالة العناصر الفارغة والتكرار قبل الحفظ.
 
+## Memory Suggestion Extraction
+
+DeepSeek يمكنه اقتراح summary/facts/preferences من آخر المحادثة، لكنه لا يكتب الذاكرة. كل اقتراح يمر بتنقية محلية للبيانات الحساسة، ويحفظ كـPENDING ثم يحتاج اعتماد المالك. المحتوى يستخدم كمصدر اقتراح فقط ولا يرقى إلى business knowledge.
+
+الذاكرة المنتهية أو المعطل مشاركتها لا تدخل سياق الرد. `private_notes` لا تدخل extractor ولا الرد. تقييمات العملاء مقياس تشغيلي فقط ولا تعدل prompt أو knowledge أو memory تلقائيًا.
+
 ## Failure Behavior
 
 - أخطاء DeepSeek المؤقتة 429/5xx/network يعاد التعامل معها حسب retry policy.

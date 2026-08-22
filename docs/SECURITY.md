@@ -22,6 +22,8 @@
 - `INTERNAL`: يستخدم للتوجيه الداخلي ولا يجب كشفه على أنه سياسة داخلية.
 - `PRIVATE`: لا يدخل LLM retrieval.
 - `ContactMemory.private_notes`: Owner-only ولا تدخل سياق AI.
+- اقتراح الذاكرة لا يكتب ContactMemory قبل اعتماد المالك، والـretention المنتهي يعطل مشاركة الذاكرة.
+- طبقة محلية تستبعد OTP والبطاقات وIBAN وكلمات المرور ومفاتيح الخدمات والبيانات الصحية من الذاكرة المشتركة.
 
 ## Prompt Injection
 
@@ -57,6 +59,8 @@
 ## Telegram callbacks
 
 Callback query قد ينتهي سريعًا. handler يجب أن يجيب مبكرًا أو يستخدم `safe_callback_answer` بحيث لا يتحول `query is too old` إلى crash.
+
+تقييم الرد يتحقق من أن `callback.from_user.id` يطابق Contact الذي استلم Approval؛ المالك أو شخص آخر لا يستطيع تسجيل تقييم لذلك الرد. التقييم لا يمنح أي صلاحية إدارية ولا يفعّل تعلمًا تلقائيًا.
 
 ## قاعدة مراجعة أمنية
 

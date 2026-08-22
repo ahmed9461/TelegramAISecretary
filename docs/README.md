@@ -21,8 +21,9 @@
 15. `DEVELOPER_HANDOFF.md` — تعليمات تسليم المشروع لمبرمج/AI جديد.
 16. `M5_SECRETARY_BRAIN.md` — تفاصيل M5.
 17. `M6_SECRETARY_LEARNING.md` — تفاصيل وإغلاق M6.
-18. `M7_RETRIEVAL_QUALITY.md` — تفاصيل M7 الحالية.
-19. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
+18. `M7_RETRIEVAL_QUALITY.md` — تفاصيل وإغلاق M7.
+19. `M8_MEMORY_INTELLIGENCE.md` — تفاصيل M8 والبوابة الحية.
+20. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
 
 ## قاعدة التحديث
 

@@ -140,3 +140,21 @@ The sources that grounded a candidate are stored as bounded metadata in `approva
 **Status:** Accepted
 
 Provider names, policy reason codes and raw enum values remain in logs/data only. Telegram copy uses professional Arabic descriptions and presents the system as the owner's configurable secretary, not a generic AI assistant.
+
+## ADR-024 — Memory proposals are staged, explicit and expiring
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Conversation-derived memory is written first to `memory_suggestions`, never directly to ContactMemory. It has source messages, confidence, rationale and TTL. Only an owner approval merges it; rejection, supersession and expiry remain auditable states.
+
+## ADR-025 — Shared contact memory has provenance, retention and local privacy filtering
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Every approved summary/fact/preference records provenance and confidence. Retention is configurable and expired memory is excluded from AI context. A deterministic local filter rejects secrets, authentication/payment data and health data even if an extractor returns them. `private_notes` remains owner-only.
+
+## ADR-026 — Feedback is an operational signal, not automatic learning
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Ratings bind to one approval and may be submitted only by its recipient. Prompt frequency and enablement are settings. Feedback can be summarized for the owner but cannot silently change memory, knowledge, policy or prompts.
