@@ -63,11 +63,11 @@ BusinessProfile يحدد الهوية والنبرة والتعليمات الع
 
 ## Knowledge Retrieval
 
-المرحلة الحالية تستخدم PostgreSQL retrieval deterministic على KnowledgeItem. `PRIVATE` مستبعد. `PUBLIC` و`INTERNAL` قد يدخلان السياق مع تمييز visibility. الواجهة قابلة للاستبدال لاحقًا بإضافة embeddings/vector search دون تغيير Telegram Adapter.
+المرحلة الحالية تستخدم PostgreSQL retrieval deterministic على KnowledgeItem مع normalization عربي/إنجليزي ووزن قابل للتفسير. `PRIVATE` والمنتهي زمنيًا مستبعدان، و`PUBLIC` و`INTERNAL` قد يدخلان السياق مع تمييز visibility. التعارض بين حقائق فعالة يرفع إشارة إلى local policy. الواجهة قابلة للاستبدال لاحقًا بإضافة embeddings/vector search دون تغيير Telegram Adapter، لكن ذلك يحتاج فشلًا مقاسًا أولًا.
 
 ## Bulk Ingestion
 
-`app/knowledge/bulk.py` يستقبل مصدرًا كبيرًا، يقسمه، يطلب من extractor إنتاج records منظمة، يطبع/ينظف النتائج ويزيل التكرار، ثم يحفظها فقط بعد معاينة وموافقة المالك من `bulk_knowledge_ui.py`.
+`app/knowledge/bulk.py` يستقبل مصدرًا كبيرًا، يقسمه، يطلب من extractor إنتاج records منظمة، يطبع/ينظف النتائج ويزيل التكرار، ثم يحفظها فقط بعد معاينة وموافقة المالك من `bulk_knowledge_ui.py`. كل commit في M7 يرتبط بـKnowledgeBatch وبصمة محتوى، ويمكن التراجع عنه دون حذف التاريخ.
 
 ## Dynamic Interface
 

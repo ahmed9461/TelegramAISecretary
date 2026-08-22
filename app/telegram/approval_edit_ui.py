@@ -13,6 +13,7 @@ from app.db.session import SessionLocal
 from app.knowledge.admin import add_knowledge
 from app.security.owner import OwnerGuard
 from app.telegram.owner_ui import approval_keyboard
+from app.telegram.professional_copy import knowledge_source_text, relevance_text
 
 router = Router(name="approval_edit_ui")
 settings = get_settings()
@@ -76,8 +77,7 @@ async def approval_edit_start(callback: CallbackQuery, state: FSMContext) -> Non
         except Exception:
             pass
         await callback.message.answer(
-            "✏️ أرسل الآن الرد المعدل كاملًا.\n\n"
-            "لن يُرسل للعميل حتى تضغط «إرسال الرد» بعد المراجعة."
+            "✏️ أرسل الآن الرد المعدل كاملًا.\n\nلن يُرسل للعميل حتى تضغط «إرسال الرد» بعد المراجعة."
         )
     await callback.answer()
 
@@ -131,8 +131,10 @@ async def approval_sources(callback: CallbackQuery) -> None:
         if draft is None:
             await callback.answer("الرد لم يعد قيد المراجعة", show_alert=True)
             return
-        if not draft.trigger_text.strip():
-            hits = ()
+        if draft.source_snapshots:
+            sources = list(draft.source_snapshots)
+        elif not draft.trigger_text.strip():
+            sources = []
         else:
             built = build_ai_context(
                 session,
@@ -141,15 +143,32 @@ async def approval_sources(callback: CallbackQuery) -> None:
                 message_limit=settings.context_message_limit,
                 knowledge_top_k=settings.knowledge_top_k,
             )
-            hits = built.knowledge_hits
+            sources = [
+                {
+                    "id": hit.id,
+                    "title": hit.title,
+                    "visibility": hit.visibility,
+                    "score": hit.score,
+                    "source": hit.source,
+                    "version": hit.version,
+                    "conflict_ids": list(hit.conflict_ids),
+                }
+                for hit in built.knowledge_hits
+            ]
 
-    if not hits:
+    if not sources:
         text = "📚 المصادر المستخدمة\n\nلا توجد معرفة مالك مطابقة لهذا الرد."
     else:
         lines = ["📚 المصادر المستخدمة", ""]
-        for hit in hits:
-            icon = "🌍" if hit.visibility == "PUBLIC" else "🏠"
-            lines.append(f"{icon} #{hit.id} — {hit.title} ({hit.score:.2f})")
+        for source in sources:
+            icon = "🌍" if source.get("visibility") == "PUBLIC" else "🏠"
+            conflict = " — توجد معلومة أخرى متعارضة" if source.get("conflict_ids") else ""
+            lines.append(f"{icon} #{source.get('id')} — {source.get('title')}")
+            lines.append(
+                f"   {relevance_text(float(source.get('score') or 0.0))} · "
+                f"{knowledge_source_text(source.get('source'))}"
+                f" · النسخة {int(source.get('version') or 1)}{conflict}"
+            )
         text = "\n".join(lines)
     if callback.message:
         await callback.message.answer(text[:4000])

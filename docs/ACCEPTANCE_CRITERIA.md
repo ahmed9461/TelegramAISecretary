@@ -32,6 +32,10 @@
 - INTERNAL لا يكشف كسياسة داخلية.
 - unknown business-specific fact لا يخترع.
 - source provenance قابل للمراجعة من approval UI.
+- المعرفة المنتهية لا تدخل الاسترجاع.
+- التعارض الفعال لا يختار بصمت ويجبر مراجعة المالك.
+- تعديل المعرفة ينشئ نسخة جديدة ولا يمحو السابقة.
+- approval يحتفظ بمصادره وقت الإنشاء حتى بعد تغير المعرفة.
 
 ## Contact Memory
 
@@ -51,6 +55,16 @@
 - cancel لا يحفظ العناصر.
 - duplicate normalization مطبق.
 - visibility المختارة تطبق على جميع العناصر المعتمدة.
+- إعادة المصدر نفسه لا تنشئ دفعة وعناصر مكررة.
+- يمكن مراجعة دفعة كاملة والتراجع عنها دون حذف سجلها.
+
+## Retrieval Quality
+
+- توجد eval dataset ثابتة تتضمن أسعارًا وسياسات وFAQ وخدمات وسؤالًا بلا مصدر.
+- نتيجة top-1 قابلة لإعادة التشغيل من `scripts/evaluate_retrieval.py`.
+- normalization العربي يتعامل مع التشكيل واختلافات الهمزة الشائعة.
+- PRIVATE والمنتهي زمنيًا مستبعدان.
+- لا تضاف vector infrastructure قبل فشل مقاس يبررها.
 
 ## Rich Messages
 
@@ -105,4 +119,14 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - Telegram Business live: Bulk cancel/commit، Sources، Native Rich، contextual keyword match/non-match، وintent-only match بعد approval، وتنفيذ الأزرار: PASS.
 - الرد المطابق ظهر مرة واحدة وسجلت الموافقة معرف إرسال واحدًا.
 - Network fault injection: owner retry محدود وcustomer uncertain send دون retry: PASS.
-- CI البعيد الجديد والمراجعة والدمج ليست ضمن هذه النتيجة بعد؛ PR #2 بقي Draft و`main` لم يتغير.
+- نجح CI البعيد لاحقًا على Python 3.12/3.13، ثم اندمج PR #2 في `main`.
+
+## نتيجة gate الآلي لـM7 — 2026-08-22
+
+- retrieval eval: 14/14 top-1.
+- `pytest`: 72 passed, 1 warning.
+- Ruff correctness و`compileall`: PASS.
+- PostgreSQL migrations: `0005 (head)`.
+- isolated PostgreSQL upgrade/downgrade/re-upgrade: PASS.
+- Telegram live: import/duplicate/conflict/provenance/version/rollback/professional copy: PASS.
+- CI البعيد والدمج يبقيان مطلوبين قبل إعلان M7 مندمجة.

@@ -116,3 +116,27 @@ Global `AUTO / APPROVAL / OBSERVE / OFF` modifies allowed behavior but does not 
 **Status:** Accepted
 
 Project continuity must not depend on chat history. `PROJECT_MEMORY.md`, `CONSTANTS.md`, `PROGRESS.md`, `RUNBOOK.md`, milestone docs and specialized references are maintained with the code. Major changes are incomplete until the relevant documentation is updated.
+
+## ADR-020 — Knowledge history is append-oriented
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Knowledge edits create a new active version and supersede the previous row. Bulk rollback marks the batch and its active items rolled back instead of deleting history. This keeps provenance and recovery possible while retrieval reads active, valid rows only.
+
+## ADR-021 — Active knowledge conflicts fail closed
+**Date:** 2026-08-22
+**Status:** Accepted
+
+If active facts with the same normalized type/title contain different content, retrieval marks the conflict and local policy requires owner approval. The model must not silently choose one as authoritative.
+
+## ADR-022 — Approval provenance is a creation-time snapshot
+**Date:** 2026-08-22
+**Status:** Accepted
+
+The sources that grounded a candidate are stored as bounded metadata in `approvals.context_json`. Source inspection prefers this snapshot so an approval remains auditable even after knowledge is edited, expired or rolled back. Content itself is not duplicated into the approval snapshot.
+
+## ADR-023 — User-facing copy hides implementation vocabulary
+**Date:** 2026-08-22
+**Status:** Accepted
+
+Provider names, policy reason codes and raw enum values remain in logs/data only. Telegram copy uses professional Arabic descriptions and presents the system as the owner's configurable secretary, not a generic AI assistant.

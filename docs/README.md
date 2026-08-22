@@ -20,8 +20,9 @@
 14. `ACCEPTANCE_CRITERIA.md` — متى نعتبر الميزة جاهزة فعلًا.
 15. `DEVELOPER_HANDOFF.md` — تعليمات تسليم المشروع لمبرمج/AI جديد.
 16. `M5_SECRETARY_BRAIN.md` — تفاصيل M5.
-17. `M6_SECRETARY_LEARNING.md` — تفاصيل M6 الحالية.
-18. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
+17. `M6_SECRETARY_LEARNING.md` — تفاصيل وإغلاق M6.
+18. `M7_RETRIEVAL_QUALITY.md` — تفاصيل M7 الحالية.
+19. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
 
 ## قاعدة التحديث
 

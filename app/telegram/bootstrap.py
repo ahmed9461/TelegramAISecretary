@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 
-import httpx
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Message
@@ -24,7 +23,8 @@ from app.conversations.context import build_ai_context
 from app.conversations.ingest import ingest_message
 from app.conversations.search import search_messages
 from app.db.enums import ConversationState, DecisionAction
-from app.db.models import Contact, Conversation, Message as DBMessage
+from app.db.models import Contact, Conversation
+from app.db.models import Message as DBMessage
 from app.db.repositories import (
     ApprovalRepository,
     BusinessConnectionRepository,
@@ -43,6 +43,7 @@ from app.telegram.adapter import AiogramTelegramAdapter
 from app.telegram.contracts import IncomingBusinessMessage
 from app.telegram.debounce import DebounceRegistry
 from app.telegram.owner_ui import approval_keyboard, main_admin_keyboard
+from app.telegram.professional_copy import decision_reason_text
 
 logger = logging.getLogger(__name__)
 router = Router(name="secretary")
@@ -138,17 +139,15 @@ async def _set_card_status(callback: CallbackQuery, status_text: str) -> None:
 async def owner_start(message: Message) -> None:
     if not guard.is_owner(message.from_user.id if message.from_user else None):
         return
-    multimodal = "🟢 Gemini → DeepSeek" if settings.multimodal_configured else "⚪ غير مهيأ"
-    text_ai = "🟢 DeepSeek" if settings.text_ai_configured else "⚪ غير مهيأ"
+    image_service = "🟢 جاهزة" if settings.multimodal_configured else "⚪ غير مهيأة"
+    reply_service = "🟢 جاهزة" if settings.text_ai_configured else "⚪ غير مهيأة"
     await message.answer(
         "🧑‍💼 السكرتير\n\n"
         "الحالة: 🟢 يعمل\n"
         "الوضع: 🟡 موافقة قبل الإرسال\n"
-        f"النصوص: {text_ai}\n"
-        f"الصور: {multimodal}\n\n"
-        "لإضافة معرفة:\n"
-        "/learn عام | العنوان | المعلومة\n"
-        "/learn داخلي | العنوان | المعلومة",
+        f"صياغة الردود: {reply_service}\n"
+        f"فهم الصور: {image_service}\n\n"
+        "يمكنك إدارة الهوية والمعرفة والسياسات من الأزرار أدناه.",
         reply_markup=main_admin_keyboard(),
     )
 
@@ -338,7 +337,12 @@ def _load_text_work(conversation_id: int, trigger_message_id: int) -> tuple[str,
     with SessionLocal() as session:
         conversation = session.get(Conversation, conversation_id)
         db_message = session.get(DBMessage, trigger_message_id)
-        if conversation is None or db_message is None or db_message.is_deleted or not db_message.text:
+        if (
+            conversation is None
+            or db_message is None
+            or db_message.is_deleted
+            or not db_message.text
+        ):
             return None
         contact = session.get(Contact, conversation.contact_id)
         built = build_ai_context(
@@ -361,6 +365,34 @@ def _conversation_is_current(conversation_id: int, expected_revision: int) -> Co
         # Return a detached snapshot sufficient for create_approval; caller re-queries before write.
         session.expunge(conversation)
         return conversation
+
+
+def _approval_context(*, intent: str, context: dict) -> dict:
+    sources: list[dict] = []
+    for item in context.get("trusted_knowledge") or []:
+        if not isinstance(item, dict):
+            continue
+        sources.append(
+            {
+                key: item.get(key)
+                for key in (
+                    "id",
+                    "type",
+                    "title",
+                    "visibility",
+                    "score",
+                    "source",
+                    "version",
+                    "valid_until",
+                    "conflict_ids",
+                )
+            }
+        )
+    return {
+        "intent": intent.strip().upper(),
+        "sources": sources,
+        "has_conflicting_grounding": bool(context.get("has_conflicting_grounding")),
+    }
 
 
 async def _send_approval_card(bot: Bot, *, approval_id: int, text: str) -> None:
@@ -437,7 +469,7 @@ async def _process_text_for_approval(
                 "💬 رسالة تحتاج تدخلك\n\n"
                 f"من: {contact_name}\n"
                 f"الرسالة: {text[:1000]}\n"
-                f"السبب: {result.decision.reason_code}\n\n"
+                f"سبب التحويل: {decision_reason_text(result.decision.reason_code)}\n\n"
                 "لم يتم إرسال رد تلقائي."
             ),
         )
@@ -457,6 +489,7 @@ async def _process_text_for_approval(
                 reason_code=result.decision.reason_code,
                 intent=result.decision.intent,
             ),
+            context=_approval_context(intent=result.decision.intent, context=context),
             ttl_hours=settings.approval_ttl_hours,
         )
 
@@ -467,7 +500,7 @@ async def _process_text_for_approval(
             "💬 رد مقترح على رسالة\n\n"
             f"👤 {contact_name}\n"
             f"📝 الرسالة: {text[:1000]}\n\n"
-            f"🤖 رد DeepSeek المقترح:\n{result.candidate_reply}\n\n"
+            f"✍️ رد السكرتير المقترح:\n{result.candidate_reply}\n\n"
             f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
         ),
     )
@@ -523,20 +556,13 @@ async def _process_photo_for_approval(
             user_text=message.caption,
             context=context,
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("multimodal_image_failed chat=%s message=%s", chat_id, message.message_id)
-        status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
-        reason = (
-            f"Gemini غير متاح مؤقتًا ({status}) بعد إعادة المحاولة والـfallback."
-            if status in {429, 500, 502, 503, 504}
-            else "تعذر إكمال مسار تحليل الصورة."
-        )
         await bot.send_message(
             chat_id=settings.owner_telegram_id,
             text=(
-                "⚠️ تعذر تحليل صورة واردة بالذكاء الاصطناعي.\n"
+                "⚠️ تعذر فهم صورة واردة بعد المحاولة الآمنة.\n"
                 f"المحادثة: {chat_id}\n"
-                f"السبب: {reason}\n"
                 "لم يتم إرسال أي رد للمستخدم."
             ),
         )
@@ -546,14 +572,17 @@ async def _process_photo_for_approval(
         logger.info("image_ai_result_discarded_stale conversation=%s", conversation_id)
         return
 
-    if result.decision.action in {DecisionAction.SILENT, DecisionAction.ESCALATE} or not result.candidate_reply:
+    if (
+        result.decision.action in {DecisionAction.SILENT, DecisionAction.ESCALATE}
+        or not result.candidate_reply
+    ):
         await bot.send_message(
             chat_id=settings.owner_telegram_id,
             text=(
                 "🖼 صورة تحتاج تدخلك\n\n"
                 f"من: {contact_name}\n"
-                f"ملخص Gemini: {result.vision.summary}\n"
-                f"القرار: {result.decision.reason_code}\n\n"
+                f"فهم الصورة: {result.vision.summary}\n"
+                f"سبب التحويل: {decision_reason_text(result.decision.reason_code)}\n\n"
                 "لم يتم إنشاء رد قابل للإرسال تلقائيًا."
             ),
         )
@@ -573,20 +602,17 @@ async def _process_photo_for_approval(
                 reason_code=result.decision.reason_code,
                 intent=result.decision.intent,
             ),
+            context=_approval_context(intent=result.decision.intent, context=context),
             ttl_hours=settings.approval_ttl_hours,
         )
 
     extracted = result.vision.extracted_text.strip()
     extracted_preview = extracted[:500] + ("…" if len(extracted) > 500 else "")
-    card = (
-        "🖼 رد مقترح على صورة\n\n"
-        f"👤 {contact_name}\n"
-        f"🔎 فهم Gemini: {result.vision.summary}\n"
-    )
+    card = f"🖼 رد مقترح على صورة\n\n👤 {contact_name}\n🔎 فهم الصورة: {result.vision.summary}\n"
     if extracted_preview:
         card += f"📝 النص المقروء: {extracted_preview}\n"
     card += (
-        f"\n🤖 رد DeepSeek المقترح:\n{result.candidate_reply}\n\n"
+        f"\n✍️ رد السكرتير المقترح:\n{result.candidate_reply}\n\n"
         f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
     )
     await _send_approval_card(bot, approval_id=approval.id, text=card)
@@ -609,9 +635,7 @@ async def on_business_message(message: Message, bot: Bot) -> None:
                 session, owner_id=owner.id, chat_id=message.chat.id
             )
             if conversation is not None:
-                ApprovalRepository.invalidate_pending(
-                    session, conversation.id, status="SUPERSEDED"
-                )
+                ApprovalRepository.invalidate_pending(session, conversation.id, status="SUPERSEDED")
                 ConversationRepository.append_outgoing(
                     session,
                     conversation=conversation,
@@ -635,7 +659,9 @@ async def on_business_message(message: Message, bot: Bot) -> None:
         sender_name=message.from_user.full_name,
         text=message.text or message.caption,
         content_type=_content_type(message),
-        reply_to_message_id=(message.reply_to_message.message_id if message.reply_to_message else None),
+        reply_to_message_id=(
+            message.reply_to_message.message_id if message.reply_to_message else None
+        ),
     )
     with SessionLocal() as session:
         result = ingest_message(
@@ -714,7 +740,9 @@ async def on_edited_business_message(message: Message, bot: Bot) -> None:
     key = (connection_id, message.chat.id)
     debouncer.cancel(key)
     if message.from_user.id == settings.owner_telegram_id:
-        logger.info("owner_manual_message_edited chat=%s message=%s", message.chat.id, message.message_id)
+        logger.info(
+            "owner_manual_message_edited chat=%s message=%s", message.chat.id, message.message_id
+        )
         return
     if conversation_id and internal_id and message.text:
         debouncer.schedule(

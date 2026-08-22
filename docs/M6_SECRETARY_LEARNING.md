@@ -172,4 +172,4 @@ Ruff E9/F63/F7/F82: success
 
 ## 14. حالة M6
 
-اكتمل gate التنفيذ والاختبار الحي محليًا على `m6-secretary-learning`. ما زال PR #2 Draft لأن آخر diff لم ينشر ولم يمر بعد على CI بعيد جديد ومراجعة. لا تعتبر M6 merged أو production-stable قبل الدمج الفعلي إلى `main`، ولا يبدأ M7 على هذا الفرع.
+اكتمل gate التنفيذ والاختبار الحي على `m6-secretary-learning`. بعد ذلك نجح GitHub Actions run `32535443695` على Python 3.12 و3.13، وأُخرج PR #2 من Draft ثم اندمج في `main` بالـSHA `14011292fe2181618854dae948dae92b79ef3b86`. بدأ M7 لاحقًا من `main` على فرع مستقل.

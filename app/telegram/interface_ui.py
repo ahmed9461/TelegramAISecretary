@@ -18,6 +18,7 @@ from app.interface.service import get_owned_menu_item, list_menu_items
 from app.security.owner import OwnerGuard
 from app.telegram.adapter import AiogramTelegramAdapter
 from app.telegram.callback_safety import safe_callback_answer
+from app.telegram.professional_copy import menu_action_text
 
 router = Router(name="interface_ui")
 settings = get_settings()
@@ -53,7 +54,8 @@ def _home_keyboard(profile_mode: str, rows: list[MenuItem]) -> InlineKeyboardMar
         ],
         [
             InlineKeyboardButton(
-                text=("✅ " if profile_mode == InterfaceMode.CUSTOM_MENU.value else "") + "أزرار فقط",
+                text=("✅ " if profile_mode == InterfaceMode.CUSTOM_MENU.value else "")
+                + "أزرار فقط",
                 callback_data="interface:mode:CUSTOM_MENU",
             )
         ],
@@ -102,7 +104,8 @@ def _render_home(profile_mode: str, rows: list[MenuItem]) -> str:
         for row in rows[:12]:
             visibility = "🎯 سياقي" if _is_contextual(row) else "🌐 دائم"
             lines.append(
-                f"• {row.emoji or ''} {row.label} — {row.action_type} — {visibility}".strip()
+                f"• {row.emoji or ''} {row.label} — {menu_action_text(row.action_type)} — "
+                f"{visibility}".strip()
             )
     return "\n".join(lines)[:4000]
 
@@ -295,9 +298,7 @@ async def _save_button(
         session.commit()
         item_id = row.id
     await state.clear()
-    visibility = (
-        "🎯 سياقي" if visibility_rules.get("mode") == "CONTEXTUAL" else "🌐 دائم"
-    )
+    visibility = "🎯 سياقي" if visibility_rules.get("mode") == "CONTEXTUAL" else "🌐 دائم"
     await message.answer(
         f"✅ تم إنشاء الزر #{item_id} — {visibility}.",
         reply_markup=InlineKeyboardMarkup(

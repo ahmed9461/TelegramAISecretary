@@ -87,7 +87,7 @@ M5 was tested live through Telegram Business and accepted for merge into `main` 
 
 ## M6 — Secretary Learning, Bulk Knowledge & Contextual UI
 
-**Status: local live gate passed on `m6-secretary-learning`; PR #2 remains Draft pending publish, fresh CI, review and merge.**
+**Status: مكتمل ومندمج في `main` عبر PR #2.**
 
 ### Approval & learning
 
@@ -174,7 +174,53 @@ compileall: PASS
 Ruff correctness gate: PASS
 ```
 
-This closes the local M6 implementation/live gate. It does not claim a new remote CI run or a merge: PR #2 remains Draft and `main` is unchanged.
+أغلق CI البعيد اللاحق بوابة M6 على Python 3.12 و3.13، ثم اندمج PR #2 في `main` بالـSHA `14011292fe2181618854dae948dae92b79ef3b86`.
+
+## M7 — Retrieval Quality & Knowledge Operations
+
+**Status: التنفيذ والاختبار الحي مكتملان على `codex/m7-retrieval-quality`؛ CI/الدمج قيد الإغلاق.**
+
+### Implemented
+
+- Arabic/English deterministic retrieval normalization ووزن قابل للتفسير للعنوان والوسوم ونوع المعرفة.
+- eval dataset ثابت للأسعار والسياسات والدفع والدعم والخدمات والأسئلة بلا مصدر.
+- استبعاد PRIVATE والمنتهي زمنيًا.
+- كشف تعارض الحقائق الفعالة وإجبار موافقة المالك بدل اختيار معلومة بصمت.
+- `KnowledgeBatch` مع content hash، منع duplicate import، حالة الدفعة، والتراجع عن دفعة كاملة.
+- versioning لعناصر المعرفة عند تعديل العنوان/المحتوى مع حفظ النسخة السابقة.
+- approval provenance snapshot محفوظ في `approvals.context_json` ويظل قابلًا للمراجعة بعد تغير المعرفة.
+- واجهة إدارة للدفعات والنسخ والمصادر والتعارض بصياغة مهنية.
+- copy guard يمنع عرض أكواد داخلية وأسماء المزودين وعبارة «كيف أقدر أساعدك اليوم؟».
+- migrations `0004_m7_knowledge_operations` و`0005_m7_approval_provenance`.
+
+### Automated gate — 2026-08-22
+
+```text
+retrieval evaluation: 14/14 top-1
+pytest: 72 passed, 1 known warning
+compileall: PASS
+Ruff correctness gate: PASS
+PostgreSQL migration head: 0005
+isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
+```
+
+التحذير المعروف هو Starlette TestClient/httpx deprecation ولا يمثل فشلًا تشغيليًا.
+
+### Telegram live gate — 2026-08-22
+
+- حفظ مصدر PUBLIC في دفعة واحدة، ثم رفض إعادة المصدر نفسه دون إنشاء نسخة.
+- إنشاء حقيقة سعر ثانية متعارضة؛ أظهرت المصادر النسختين وعبارة التعارض المهنية.
+- ظل approval provenance snapshot يعرض المصادر نفسها بعد التراجع عن دفعة التعارض.
+- رفضت المسودة المتعارضة دون إرسال، ثم وصل الرد الصحيح مرة واحدة بعد إزالة التعارض.
+- تعديل معلومة من Telegram أنشأ النسخة 2 مع بقاء النسخة 1 كسجل سابق.
+- وصلت التحية بصيغة «كيف أقدر أساعدك؟» دون كلمة «اليوم» أو اسم provider.
+- كشف الاختبار أكواد type وvisibility في شاشتين إداريتين؛ حُولت إلى أوصاف عربية، وأعيد اختبار المعاينة حيًا بنجاح.
+- تراجع الاختبار عن الدفعتين، ثم أزيلت عناصر ودفعات الاختبار المحددة فقط. بقيت المعرفة الحقيقية #1 والزر الحقيقي الفعال دون تغيير.
+- حالات الموافقات الثلاث: `REJECTED` لمسودة التعارض، و`SENT` للرد الصحيح والتحية، وكل إرسال يملك Telegram message ID واحدًا.
+
+بروفة migration معزولة كشفت أن downgrade لـ`0004` اعتمد اسم قيد ثابتًا لم يكن مضمونًا في القاعدة الجديدة. عُدّل downgrade لاكتشاف اسم FK الفعلي، ثم نجح المسار الكامل `upgrade head → downgrade base → upgrade head` وانتهى عند `0005`; حُذفت قاعدة البروفة المؤقتة.
+
+لا تسجل المرحلة مندمجة حتى ينجح CI البعيد والمراجعة.
 
 ## Documentation hardening — 2026-08-22
 

@@ -27,7 +27,10 @@
 هوية النشاط/العلامة، وصف النشاط، المجال، أسلوب الرد، اللغة، النبرة، custom instructions و`extras_json`.
 
 ### knowledge_items
-مصدر الحقائق القابلة للاسترجاع. أهم المفاهيم: type، title، content، visibility، tags، active/validity metadata.
+مصدر الحقائق القابلة للاسترجاع. أهم المفاهيم: type، title، content، visibility، tags، active/validity metadata، `batch_id`، `version`، `supersedes_id` و`content_hash`. تعديل المحتوى ينشئ نسخة جديدة ويحوّل السابقة إلى `SUPERSEDED`.
+
+### knowledge_batches
+سجل عملية استيراد معرفة: المالك، اسم/نوع المصدر، visibility، بصمة المحتوى، عدد العناصر، الحالة وmetadata. يسمح بمنع استيراد المصدر نفسه والتراجع عن عناصر دفعة كاملة دون حذف التاريخ.
 
 ### contact_memories
 ذاكرة معزولة لشخص واحد: summary، facts_json، preferences_json، private_notes وshare_with_ai.
@@ -38,7 +41,7 @@
 ## الموافقات والتشغيل
 
 ### approvals
-مسودة رد مربوطة بالمحادثة وrevision وtrigger message، مع candidate response وحالة lifecycle وTTL ومعلومات رسالة بطاقة المالك والإرسال النهائي.
+مسودة رد مربوطة بالمحادثة وrevision وtrigger message، مع candidate response وحالة lifecycle وTTL ومعلومات رسالة بطاقة المالك والإرسال النهائي. في M7 يحتوي `context_json` على intent وsnapshot محدود لمصادر المعرفة والتعارض وقت إنشاء المسودة.
 
 ### escalations
 تمثل الحالات التي تحتاج تدخلًا من المالك عندما يكون ذلك مستخدمًا في المسار.
@@ -92,5 +95,7 @@
 - `0001_initial`
 - `0002_stability`
 - `0003_secretary_brain`
+- `0004_m7_knowledge_operations`
+- `0005_m7_approval_provenance`
 
 قبل إنشاء migration جديد: افحص رأس Alembic الحالي والموديلات الموجودة، ولا تنشئ جدولًا مكررًا لمفهوم موجود أصلًا.

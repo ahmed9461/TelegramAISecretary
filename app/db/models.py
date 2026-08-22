@@ -1,16 +1,34 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.db.enums import ConversationState, FlowSessionStatus, FlowStatus, GlobalMode, InterfaceMode, Visibility
+from app.db.enums import (
+    ConversationState,
+    FlowSessionStatus,
+    FlowStatus,
+    GlobalMode,
+    InterfaceMode,
+    Visibility,
+)
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Owner(Base):
@@ -34,12 +52,16 @@ class BusinessConnection(Base):
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     rights_json: Mapped[dict] = mapped_column(JSON, default=dict)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Contact(Base):
     __tablename__ = "contacts"
-    __table_args__ = (UniqueConstraint("owner_id", "telegram_user_id", name="uq_contact_owner_user"),)
+    __table_args__ = (
+        UniqueConstraint("owner_id", "telegram_user_id", name="uq_contact_owner_user"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
@@ -52,16 +74,22 @@ class Contact(Base):
     is_vip: Mapped[bool] = mapped_column(Boolean, default=False)
     is_excluded: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Conversation(Base):
     __tablename__ = "conversations"
-    __table_args__ = (UniqueConstraint("owner_id", "telegram_chat_id", name="uq_conversation_owner_chat"),)
+    __table_args__ = (
+        UniqueConstraint("owner_id", "telegram_chat_id", name="uq_conversation_owner_chat"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
-    contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id", ondelete="CASCADE"), index=True)
+    contact_id: Mapped[int] = mapped_column(
+        ForeignKey("contacts.id", ondelete="CASCADE"), index=True
+    )
     telegram_chat_id: Mapped[int] = mapped_column(BigInteger, index=True)
     business_connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     state: Mapped[str] = mapped_column(String(32), default=ConversationState.AI_APPROVAL.value)
@@ -70,17 +98,27 @@ class Conversation(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     revision: Mapped[int] = mapped_column(Integer, default=1)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_incoming_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_incoming_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Message(Base):
     __tablename__ = "messages"
-    __table_args__ = (UniqueConstraint("conversation_id", "telegram_message_id", name="uq_message_conversation_tg"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "conversation_id", "telegram_message_id", name="uq_message_conversation_tg"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
     telegram_message_id: Mapped[int] = mapped_column(BigInteger)
     direction: Mapped[str] = mapped_column(String(16))
     sender_type: Mapped[str] = mapped_column(String(32), default="CONTACT")
@@ -92,6 +130,22 @@ class Message(Base):
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class KnowledgeBatch(Base):
+    __tablename__ = "knowledge_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
+    source_name: Mapped[str] = mapped_column(String(255))
+    source_kind: Mapped[str] = mapped_column(String(32), default="OWNER_BULK")
+    visibility: Mapped[str] = mapped_column(String(16), default=Visibility.INTERNAL.value)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    rolled_back_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class KnowledgeItem(Base):
@@ -106,10 +160,23 @@ class KnowledgeItem(Base):
     status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
     tags_json: Mapped[list] = mapped_column(JSON, default=list)
     source: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("knowledge_batches.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    supersedes_id: Mapped[int | None] = mapped_column(
+        ForeignKey("knowledge_items.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class MenuProfile(Base):
@@ -123,15 +190,21 @@ class MenuProfile(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     welcome_message: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class MenuItem(Base):
     __tablename__ = "menu_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    menu_profile_id: Mapped[int] = mapped_column(ForeignKey("menu_profiles.id", ondelete="CASCADE"), index=True)
-    parent_item_id: Mapped[int | None] = mapped_column(ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=True)
+    menu_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("menu_profiles.id", ondelete="CASCADE"), index=True
+    )
+    parent_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=True
+    )
     label: Mapped[str] = mapped_column(String(128))
     emoji: Mapped[str | None] = mapped_column(String(32), nullable=True)
     action_type: Mapped[str] = mapped_column(String(32))
@@ -141,7 +214,9 @@ class MenuItem(Base):
     visibility_rules_json: Mapped[dict] = mapped_column(JSON, default=dict)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class CustomIntent(Base):
@@ -157,7 +232,9 @@ class CustomIntent(Base):
     confidence_threshold: Mapped[float] = mapped_column(Float, default=0.8)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Flow(Base):
@@ -172,7 +249,9 @@ class Flow(Base):
     entry_step_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     completion_action_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class FlowStep(Base):
@@ -187,21 +266,27 @@ class FlowStep(Base):
     next_step_rules_json: Mapped[dict] = mapped_column(JSON, default=dict)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class FlowSession(Base):
     __tablename__ = "flow_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
     flow_id: Mapped[int] = mapped_column(ForeignKey("flows.id", ondelete="CASCADE"), index=True)
     flow_version: Mapped[int] = mapped_column(Integer)
     current_step_key: Mapped[str] = mapped_column(String(128))
     collected_data_json: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(32), default=FlowSessionStatus.ACTIVE.value)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -209,11 +294,16 @@ class Approval(Base):
     __tablename__ = "approvals"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
-    trigger_message_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id", ondelete="SET NULL"), nullable=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    trigger_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+    )
     conversation_revision: Mapped[int] = mapped_column(Integer)
     candidate_response: Mapped[str] = mapped_column(Text)
     reason: Mapped[str] = mapped_column(String(255), default="")
+    context_json: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(32), default="PENDING")
     owner_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     owner_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

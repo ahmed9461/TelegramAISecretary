@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Owner
+from app.db.models import KnowledgeBatch, Owner
 from app.knowledge.admin import add_knowledge
 
 _ALLOWED_TYPES = {
@@ -32,11 +34,25 @@ class KnowledgeCandidate:
         return data
 
 
+@dataclass(frozen=True, slots=True)
+class BulkSaveResult:
+    batch_id: int
+    item_ids: tuple[int, ...]
+    duplicate_of_batch_id: int | None = None
+
+
+def source_content_hash(text: str) -> str:
+    normalized = "\n".join(line.rstrip() for line in text.strip().splitlines())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
 class KnowledgeExtractor(Protocol):
     async def extract_knowledge(self, *, text: str, max_items: int = 60) -> list[dict]: ...
 
 
-def normalize_candidates(raw_items: list[dict], *, max_items: int = 120) -> list[KnowledgeCandidate]:
+def normalize_candidates(
+    raw_items: list[dict], *, max_items: int = 120
+) -> list[KnowledgeCandidate]:
     """Normalize model output and aggressively reject empty/invented-looking shells.
 
     The extractor may return imperfect JSON. This layer keeps only self-contained records
@@ -125,7 +141,9 @@ async def extract_bulk_candidates(
         remaining = max_items - len(collected)
         if remaining <= 0:
             break
-        collected.extend(await extractor.extract_knowledge(text=chunk, max_items=min(60, remaining)))
+        collected.extend(
+            await extractor.extract_knowledge(text=chunk, max_items=min(60, remaining))
+        )
     return normalize_candidates(collected, max_items=max_items)
 
 
@@ -136,7 +154,35 @@ def save_bulk_candidates(
     candidates: list[KnowledgeCandidate],
     visibility: str,
     source: str = "OWNER_BULK_IMPORT",
-) -> list[int]:
+    source_hash: str,
+    source_name: str,
+) -> BulkSaveResult:
+    existing = session.scalar(
+        select(KnowledgeBatch).where(
+            KnowledgeBatch.owner_id == owner.id,
+            KnowledgeBatch.content_hash == source_hash,
+            KnowledgeBatch.status == "ACTIVE",
+        )
+    )
+    if existing is not None:
+        return BulkSaveResult(
+            batch_id=existing.id,
+            item_ids=(),
+            duplicate_of_batch_id=existing.id,
+        )
+
+    batch = KnowledgeBatch(
+        owner_id=owner.id,
+        source_name=source_name[:255],
+        source_kind="OWNER_BULK",
+        visibility=visibility,
+        content_hash=source_hash,
+        item_count=len(candidates),
+        status="ACTIVE",
+        metadata_json={},
+    )
+    session.add(batch)
+    session.flush()
     ids: list[int] = []
     for candidate in candidates:
         row = add_knowledge(
@@ -148,7 +194,8 @@ def save_bulk_candidates(
             item_type=candidate.type,
             tags=list(candidate.tags),
             source=source,
+            batch_id=batch.id,
         )
         ids.append(row.id)
     session.flush()
-    return ids
+    return BulkSaveResult(batch_id=batch.id, item_ids=tuple(ids))

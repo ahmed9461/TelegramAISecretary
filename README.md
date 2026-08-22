@@ -4,16 +4,15 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M6 — Secretary Learning, Bulk Knowledge & Contextual UI** في الفرع `m6-secretary-learning` وPR #2، وما زال تحت الاختبار الحي قبل الدمج إلى `main`.
+التطوير الحالي على **M7 — Retrieval Quality & Knowledge Operations** في الفرع `codex/m7-retrieval-quality`. اندمج M6 في `main` عبر PR #2، واجتازت M7 بوابتها الحية؛ CI البعيد والمراجعة قيد الإغلاق قبل الدمج.
 
-آخر CI موثق للفرع:
+آخر gate محلي موثق لـM7:
 
 ```text
-Python 3.12: PASS
-Python 3.13: PASS
+retrieval evaluation: 14/14 top-1
 Ruff correctness gate: PASS
 compileall: PASS
-pytest: 56 passed, 1 warning
+pytest: 72 passed, 1 warning
 ```
 
 ## ما يعمل الآن
@@ -34,6 +33,11 @@ pytest: 56 passed, 1 warning
 - أزرار 🌐 دائمة و🎯 سياقية تظهر حسب موضوع الرسالة/الرد.
 - أزرار رد ثابت، URL، وHandoff للمتابعة البشرية.
 - retry محدود لرسائل الإدارة عند Telegram network errors، مع إبقاء customer sends fail-closed.
+- استرجاع عربي/إنجليزي مقاس وقابل للتفسير مع استبعاد PRIVATE والمنتهي.
+- كشف تعارض الحقائق ورفعها لموافقة المالك بدل الاختيار الصامت.
+- دفعات معرفة قابلة للتراجع، منع استيراد المصدر نفسه، ونسخ تاريخية عند التعديل.
+- مصدر approval محفوظ وقت الإنشاء وقابل للتدقيق بعد تغير المعرفة.
+- رسائل مهنية لا تعرض أكواد السياسة أو أسماء المزودين للمستخدم.
 
 ## Quick Start — Windows
 
@@ -91,6 +95,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - [`docs/TELEGRAM_UI.md`](docs/TELEGRAM_UI.md) — Rich والأزرار.
 - [`docs/ACCEPTANCE_CRITERIA.md`](docs/ACCEPTANCE_CRITERIA.md) — معايير القبول.
 - [`docs/M6_SECRETARY_LEARNING.md`](docs/M6_SECRETARY_LEARNING.md) — تفاصيل M6.
+- [`docs/M7_RETRIEVAL_QUALITY.md`](docs/M7_RETRIEVAL_QUALITY.md) — تفاصيل M7.
 
 ## قاعدة المشروع
 
