@@ -4,7 +4,7 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M7 — Retrieval Quality & Knowledge Operations** في الفرع `codex/m7-retrieval-quality`. اندمج M6 في `main` عبر PR #2، واجتازت M7 بوابتها الحية؛ CI البعيد والمراجعة قيد الإغلاق قبل الدمج.
+التطوير الحالي على **M7 — Retrieval Quality & Knowledge Operations** في الفرع `codex/m7-retrieval-quality`. اندمج M6 في `main` عبر PR #2، واجتازت M7 بوابتها الحية وCI على Python 3.12/3.13؛ دمج PR #3 قيد الإغلاق.
 
 آخر gate محلي موثق لـM7:
 

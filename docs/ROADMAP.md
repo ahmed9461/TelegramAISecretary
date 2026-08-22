@@ -33,7 +33,7 @@
 
 ## M7 — Retrieval Quality & Knowledge Operations
 
-الحالة: **منفذ واجتاز بوابة Telegram الحية؛ CI/الدمج قيد الإغلاق**.
+الحالة: **منفذ واجتاز بوابة Telegram الحية وCI على Python 3.12/3.13؛ دمج PR #3 قيد الإغلاق**.
 
 - retrieval quality بقياس 14 حالة top-1 بدل التخمين.
 - provenance دائم للمصادر المستخدمة في الموافقة.

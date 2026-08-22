@@ -129,4 +129,5 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - PostgreSQL migrations: `0005 (head)`.
 - isolated PostgreSQL upgrade/downgrade/re-upgrade: PASS.
 - Telegram live: import/duplicate/conflict/provenance/version/rollback/professional copy: PASS.
-- CI البعيد والدمج يبقيان مطلوبين قبل إعلان M7 مندمجة.
+- CI البعيد run `32538952535`: Python 3.12/3.13 PASS.
+- دمج PR #3 يبقى مطلوبًا قبل إعلان M7 مندمجة.

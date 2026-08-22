@@ -178,7 +178,7 @@ Ruff correctness gate: PASS
 
 ## M7 — Retrieval Quality & Knowledge Operations
 
-**Status: التنفيذ والاختبار الحي مكتملان على `codex/m7-retrieval-quality`؛ CI/الدمج قيد الإغلاق.**
+**Status: التنفيذ والاختبار الحي وCI مكتملة على `codex/m7-retrieval-quality`؛ دمج PR #3 قيد الإغلاق.**
 
 ### Implemented
 
@@ -220,7 +220,19 @@ isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
 
 بروفة migration معزولة كشفت أن downgrade لـ`0004` اعتمد اسم قيد ثابتًا لم يكن مضمونًا في القاعدة الجديدة. عُدّل downgrade لاكتشاف اسم FK الفعلي، ثم نجح المسار الكامل `upgrade head → downgrade base → upgrade head` وانتهى عند `0005`; حُذفت قاعدة البروفة المؤقتة.
 
-لا تسجل المرحلة مندمجة حتى ينجح CI البعيد والمراجعة.
+### Remote CI
+
+GitHub Actions run `32538952535` (#104) نجح بالكامل:
+
+```text
+Python 3.12: PASS
+Python 3.13: PASS
+Ruff correctness: PASS
+compileall: PASS
+pytest: PASS
+```
+
+لا تسجل المرحلة مندمجة حتى تكتمل مراجعة ودمج PR #3.
 
 ## Documentation hardening — 2026-08-22
 

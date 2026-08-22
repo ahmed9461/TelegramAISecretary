@@ -60,4 +60,4 @@ isolated PostgreSQL upgrade/downgrade/re-upgrade: PASS
 
 ## بوابة الإغلاق
 
-تبقى CI على Python 3.12/3.13 والمراجعة قبل الدمج إلى `main`.
+نجح GitHub Actions run `32538952535` (#104) على Python 3.12 و3.13 بكل الخطوات. تبقى مراجعة ودمج PR #3 إلى `main`.
