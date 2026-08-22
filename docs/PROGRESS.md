@@ -287,7 +287,7 @@ pytest: PASS
 
 ## M9 — Production Operations
 
-**Status: التنفيذ والبوابة المحلية والتشغيلية الحية وCI الأول مكتملة على `codex/m9-production-operations`؛ PR #5 والدمج النهائي قيد الإغلاق.**
+**Status: مكتمل ومندمج في `main` عبر PR #5.**
 
 ### Implemented
 
@@ -336,7 +336,47 @@ Docker non-root health/readiness smoke: PASS
 - فُتح PR #5 من `codex/m9-production-operations` إلى `main` عند commit `8b956f95d0cf52338007f0718a732e8a44a79470`.
 - GitHub Actions run `32544367834`: Python 3.12 و3.13 PASS.
 - تضمنت مهمة Python 3.12 بوابة Ruff الكاملة و`compileall` و`pytest` والتحقق من Compose وبناء صورة الإنتاج، وجميعها PASS.
-- بقيت إعادة CI بعد commit توثيق بوابة الإصدار ثم الدمج فقط عند نجاحها.
+- GitHub Actions run `32544458281` للـcommit الموثق النهائي: Python 3.12 و3.13 PASS، مع بناء صورة الإنتاج على 3.12.
+- اندمج PR #5 بالـSHA `8039d79618eb836ffdcef9c6c221fb8b1ab2798f`.
+
+## M10 — Advanced Automation
+
+**Status: التنفيذ والبوابات المحلية وPostgreSQL/Docker وTelegram الحية مكتملة على `codex/m10-advanced-automation`؛ PR/CI والدمج قيد الإغلاق.**
+
+### Implemented
+
+- Flow sessions فعلية متصلة برسائل Business، مع snapshot كامل لنسخة التدفق لمنع كسر الجلسة عند التعديل.
+- معالج عربي ينشئ Flow كمسودة، يعرض Preview، وينشره فقط بقرار صريح؛ نسخة التعديل الجديدة تؤرشف السابقة عند نشرها وتعيد ربط النية بأمان.
+- Custom Intents CRUD/enable/disable وthreshold من إعداد المالك؛ المطابقة عربية/إنجليزية محلية ولا تمنح إذن إرسال.
+- بدء Flow بالنص الحر أو زر ديناميكي عبر Telegram Adapter، وإلغاء عام دون مفردات برمجية.
+- تذكيرات owner-only بمنطقة زمنية قابلة للتعديل وclaim lease يمنع التوازي ويتيح retry بعد فشل مؤكد أو استرداد عامل منهار.
+- AUTO الفعلي يستخدم نفس approval lifecycle كسجل idempotency، ويعيد فحص صلاحية Telegram لحظة الإرسال، ويسجل outgoing وAuditLog باسم SYSTEM.
+- Flow يتوقف عند الاستلام البشري والحالات المقيدة، ويتحقق أن ضغط الخيار صادر من Contact نفسه، ويعيد فحص صلاحية الإرسال الحية.
+- إصلاح مقارنة expiry القادمة من SQLite بلا timezone، وإصلاح `/start` لقراءة وضع المالك الحقيقي.
+- migration `0008` تضيف `flow_sessions.definition_json` وجدول `schedules`.
+
+### Automated/local gate — 2026-08-22
+
+```text
+pytest: 106 passed, 1 known warning
+Ruff full repository gate: PASS
+compileall: PASS
+retrieval regression: 14/14 top-1
+Alembic head/check: 0008 / PASS
+isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
+Docker Compose config/build/non-root smoke: PASS
+```
+
+### Live gate — 2026-08-22
+
+- backup قبل الترحيل عند 0007 محفوظ، ثم رُحلت القاعدة إلى 0008 ونجح check.
+- backup بعد الترحيل استعيد معزولًا عند 0008: owners=1، conversations=4، messages=37.
+- image 0.10.0: non-root، health 200، smoke readiness 503، والـAPI الحية ready 200 عند 0008 وmetrics auth 401/200.
+- Telegram/DeepSeek/Gemini preflight الحي: HTTP 200.
+- أنشأ المالك Flow من الواجهة وعُوين قبل النشر؛ بدأه العميل بالنص الحر وجمع سؤالين وأكمله، ووصل ملخص مهني للمالك.
+- تذكير مستقبلي حسب Asia/Riyadh وصل مرة واحدة ثم أصبح غير فعال.
+- تحية في AUTO خرجت مباشرة مرة واحدة بصياغة «كيف أقدر أساعدك؟» دون «اليوم» أو reason codes، مع AiRun SUCCESS وApproval SENT وAudit SYSTEM.
+- نُظفت العناصر الاصطناعية المحددة فقط؛ عادت القاعدة إلى messages=37، revision=17، ai_runs=0، flows/intents/sessions/schedules=0.
 
 ## Documentation hardening — 2026-08-22
 

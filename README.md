@@ -4,16 +4,16 @@
 
 ## الحالة الحالية
 
-التطوير الحالي على **M9 — Production Operations** في الفرع `codex/m9-production-operations`. اندمج M8 في `main` عبر PR #4 بالـSHA `00cbf898`، واجتازت M9 بوابتها المحلية والتشغيلية وTelegram الحية؛ PR/CI والدمج قيد الإغلاق.
+التطوير الحالي على **M10 — Advanced Automation** في الفرع `codex/m10-advanced-automation`. اندمج M9 في `main` عبر PR #5 بالـSHA `8039d796`، واجتازت M10 بواباتها المحلية وPostgreSQL/Docker وTelegram الحية؛ PR/CI والدمج قيد الإغلاق.
 
-آخر gate محلي كامل بعد توثيق M9:
+آخر gate محلي كامل قبل توثيق M10:
 
 ```text
 retrieval evaluation: 14/14 top-1
 Ruff full gate: PASS
 compileall: PASS
-pytest: 92 passed, 1 warning
-PostgreSQL head: 0007
+pytest: 106 passed, 1 warning
+PostgreSQL head: 0008
 isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS
@@ -50,6 +50,10 @@ backup/restore rehearsal: PASS
 - Docker/systemd production packaging مع migration gate ومستخدم غير جذر.
 - PostgreSQL backup/checksum/retention وrestore rehearsal معزولة.
 - production preflight وتدوير PostgreSQL/metrics secrets دون عرضها.
+- Flow Engine فعلي: مسودة ومعاينة ونشر، جلسات مستقلة ونسخة ثابتة، وبدء بالنص الحر أو زر ديناميكي.
+- Custom Intents قابلة للإنشاء والتعديل والتعطيل والحذف بعتبة يحددها المالك، دون تجاوز سياسة الأمان.
+- تذكيرات owner-only بمنطقة زمنية قابلة للضبط وتسليم one-shot غير مكرر.
+- AUTO فعلي للردود LOW-risk عالية الثقة والمبنية على PUBLIC، مع idempotency/audit وفشل مغلق عند عدم يقين الإرسال.
 
 ## Quick Start — Windows
 
@@ -110,6 +114,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - [`docs/M7_RETRIEVAL_QUALITY.md`](docs/M7_RETRIEVAL_QUALITY.md) — تفاصيل M7.
 - [`docs/M8_MEMORY_INTELLIGENCE.md`](docs/M8_MEMORY_INTELLIGENCE.md) — تفاصيل M8.
 - [`docs/M9_PRODUCTION_OPERATIONS.md`](docs/M9_PRODUCTION_OPERATIONS.md) — تفاصيل وإغلاق M9.
+- [`docs/M10_ADVANCED_AUTOMATION.md`](docs/M10_ADVANCED_AUTOMATION.md) — تفاصيل وبوابة M10.
 
 ## قاعدة المشروع
 

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.service import write_audit_log
 from app.db.models import Approval, Conversation
-from app.db.repositories import ApprovalRepository, ConversationRepository
+from app.db.repositories import ApprovalRepository, ConversationRepository, utcnow
 
 _INTENT_MARKER = "|INTENT="
 
@@ -114,7 +114,12 @@ def claim_for_send(session: Session, approval_id: int) -> ApprovalClaim | None:
 
 
 def mark_sent(
-    session: Session, approval_id: int, *, telegram_message_id: int | None = None
+    session: Session,
+    approval_id: int,
+    *,
+    telegram_message_id: int | None = None,
+    actor: str = "OWNER_TELEGRAM",
+    audit_action: str = "APPROVED_RESPONSE_SENT",
 ) -> None:
     approval = session.get(Approval, approval_id)
     if approval is None:
@@ -136,8 +141,8 @@ def mark_sent(
         write_audit_log(
             session,
             owner_id=conversation.owner_id,
-            actor="OWNER_TELEGRAM",
-            action="APPROVED_RESPONSE_SENT",
+            actor=actor,
+            action=audit_action,
             entity_type="APPROVAL",
             entity_id=approval.id,
             metadata={"telegram_message_id": telegram_message_id},
@@ -147,6 +152,26 @@ def mark_sent(
 
 def mark_uncertain(session: Session, approval_id: int) -> None:
     ApprovalRepository.mark_uncertain(session, approval_id)
+    session.commit()
+
+
+def mark_failed_before_send(session: Session, approval_id: int, *, reason: str) -> None:
+    approval = session.get(Approval, approval_id)
+    if approval is None:
+        return
+    conversation = session.get(Conversation, approval.conversation_id)
+    approval.status = "FAILED"
+    approval.resolved_at = utcnow()
+    if conversation is not None:
+        write_audit_log(
+            session,
+            owner_id=conversation.owner_id,
+            actor="SYSTEM",
+            action="RESPONSE_SEND_BLOCKED",
+            entity_type="APPROVAL",
+            entity_id=approval.id,
+            metadata={"reason": reason[:64]},
+        )
     session.commit()
 
 

@@ -165,5 +165,24 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] أسرار PostgreSQL/metrics قابلة للتدوير ذريًا، ودُورت فعليًا ثم أعيد اختبار التشغيل.
 - [x] بوابة Telegram الحية أثبتت AiRun/metrics/audit والصياغة المهنية، ثم نُظفت بيانات الاختبار المحددة فقط.
 - [x] CI Python 3.12/3.13 للـcommit التنفيذي في run `32544367834`، بما فيه بناء صورة الإنتاج على 3.12.
-- [ ] CI Python 3.12/3.13 بعد commit توثيق بوابة الإصدار.
-- [ ] دمج PR الخاص بـM9 بعد نجاح CI والبوابة الحية.
+- [x] CI Python 3.12/3.13 بعد commit توثيق بوابة الإصدار في run `32544458281`.
+- [x] دمج PR #5 بالـSHA `8039d79618eb836ffdcef9c6c221fb8b1ab2798f` بعد نجاح CI والبوابة الحية.
+
+## M10 — Advanced Automation
+
+- [x] Flow ينشأ كمسودة ويعرض Preview ولا ينشر دون ضغط المالك الصريح.
+- [x] Custom Intent CRUD وتشغيل/إيقاف وthreshold دون enum أو نشاط hardcoded.
+- [x] النص الحر والزر الديناميكي يستطيعان بدء Flow منشور.
+- [x] FlowSession مستقلة لكل محادثة وتحفظ snapshot/version لا تتغير عند نشر نسخة أحدث.
+- [x] بيانات الإجابات لا تختلط بين مالك أو محادثة، وملخص المالك يعرض labels مهنية.
+- [x] النية Routing فقط ولا تتجاوز Risk/State/PUBLIC grounding/approval.
+- [x] Reminder يستخدم timezone المالك، يصل مرة واحدة، ولا يرسل follow-up للعميل.
+- [x] AUTO الحقيقي يرسل فقط LOW-risk عالي الثقة وفق السياسة المحلية، ويسجل outgoing/idempotency/audit.
+- [x] AUTO وFlow يفشلان مغلقًا عند غياب صلاحية Telegram الحية، وFlow يتوقف عند الاستلام البشري.
+- [x] Reminder claim يُسترد بعد مهلة قابلة للضبط إذا انهار العامل قبل التسليم.
+- [x] HIGH/MEDIUM أو INTERNAL-only أو conflict أو state مشددة لا تتجاوز الموافقة/التصعيد.
+- [x] migration `0008` وبروفة upgrade/downgrade/re-upgrade وbackup/restore نجحت.
+- [x] Telegram live: draft/preview/publish/route/two-step completion/reminder/AUTO/professional copy ثم تنظيف محدد.
+- [x] محليًا: 106 passed، Ruff full، compileall، retrieval 14/14، Docker non-root/API gates.
+- [ ] CI Python 3.12/3.13 للـcommit النهائي.
+- [ ] دمج PR الخاص بـM10 بعد نجاح CI والبوابة الحية.

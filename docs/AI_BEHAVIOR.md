@@ -31,6 +31,8 @@ Gemini عبر `VisionProvider`. يعيد observation منظمة مثل summary �
 
 DeepSeek يعيد intent/risk/confidences/needs_more_info. بعدها local deterministic policy تختار الإجراء. النموذج لا يملك حق إلغاء قواعد الأمان المحلية.
 
+Custom Intent التي ينشئها المالك تمر إلى السياق بعد مطابقة محلية وعتبة قابلة للضبط. المطابقة قد تبدأ Flow منشورًا أو تساعد التصنيف، لكنها ليست ثقة النموذج ولا إذنًا بالإرسال. لا يعتمد النظام اقتراح intent أو flow بصمت.
+
 ## قاعدة Grounding
 
 - معلومات النشاط الحالية تحتاج trusted knowledge.
@@ -84,3 +86,4 @@ DeepSeek يمكنه اقتراح summary/facts/preferences من آخر المح�
 - كشف INTERNAL أو PRIVATE.
 - تحويل provider-specific SDK calls إلى بقية Core.
 - ربط intent/service بأسماء نشاط ثابتة في الكود.
+- استخدام Custom Intent أو Flow لتجاوز PUBLIC/INTERNAL/PRIVATE أو conversation state.

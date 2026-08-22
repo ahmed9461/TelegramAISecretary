@@ -1,4 +1,4 @@
-# Runbook — Current M9
+# Runbook — Current M10
 
 ## المتطلبات
 
@@ -60,6 +60,7 @@ Migrations المعروفة حاليًا:
 0005_m7_approval_provenance
 0006_m8_memory_intelligence
 0007_m9_production_observability
+0008_m10_advanced_automation
 ```
 
 ## الاختبارات
@@ -68,10 +69,10 @@ Migrations المعروفة حاليًا:
 pytest
 ```
 
-آخر نتيجة محلية كاملة بعد توثيق M9:
+آخر نتيجة محلية كاملة قبل توثيق M10:
 
 ```text
-92 passed, 1 warning
+106 passed, 1 warning
 ```
 
 التحذير الحالي StarletteDeprecationWarning متعلق بـFastAPI TestClient/httpx ولا يمنع نجاح suite.
@@ -90,7 +91,7 @@ python scripts/evaluate_retrieval.py
 
 النتيجة الحالية: `14/14 top-1`.
 
-تمت بروفة M9 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند رأس المصدر `0007`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تقرأ الرأس ديناميكيًا، تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
+تمت بروفة M10 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند رأس المصدر `0008`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تقرأ الرأس ديناميكيًا، تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
 
 لاختبار حد retry دون قطع شبكة حقيقية أو المخاطرة بتكرار رد عميل:
 
@@ -108,18 +109,18 @@ python -m app.telegram.run
 
 بعد التشغيل من حساب المالك أرسل `/start` عند الحاجة لفتح لوحة الإدارة.
 
-## تحديث النسخة المحلية من فرع M9
+## تحديث النسخة المحلية من فرع M10
 
 ```powershell
 cd D:\Desktop\telegram_ai_secretary_clean
-git switch codex/m9-production-operations
+git switch codex/m10-advanced-automation
 git pull
 .\.venv\Scripts\Activate.ps1
 pytest
 python -m app.telegram.run
 ```
 
-يجب أن يعرض `alembic current` الرأس `0007` قبل تشغيل كود M9.
+يجب أن يعرض `alembic current` الرأس `0008` قبل تشغيل كود M10.
 
 ## اختبار حي أساسي
 
@@ -132,6 +133,25 @@ python -m app.telegram.run
 7. اختبر رسالة جديدة بعد رد يدوي للمالك وتأكد أن draft القديم لا يرسل.
 8. عدل/احذف رسالة العميل وتأكد من إبطال draft القديم.
 9. أرسل صورة وتأكد من Gemini → DeepSeek path.
+10. أنشئ Flow كمسودة، عاينه، ثم انشره وابدأه من حساب ثانٍ بالنص الحر.
+11. تحقق أن تعديل/نشر نسخة أحدث لا يغير جلسة Flow بدأت سابقًا.
+12. أنشئ تذكيرًا مستقبليًا في timezone المالك وتأكد أنه يصل مرة واحدة ثم يصبح غير فعال.
+13. لا تختبر AUTO إلا على Contact تجريبي وحالة LOW-risk؛ تحقق من PUBLIC grounding ومن عدم وجود بطاقة موافقة أو إرسال مكرر.
+
+## الأتمتة والتذكيرات
+
+معالج التذكير يعمل داخل عملية البوت نفسها. لا تشغل عمليتي bot بالتوازي لأن ذلك يكرر polling وقد يكرر محاولات claim. الإعدادات:
+
+```text
+SCHEDULE_POLL_SECONDS=30
+SCHEDULE_BATCH_SIZE=20
+SCHEDULE_CLAIM_TIMEOUT_SECONDS=300
+CUSTOM_INTENT_DEFAULT_THRESHOLD=0.82
+```
+
+إذا لم يصل تذكير، افحص `schedules.enabled`, `last_run_at`, ووقت `config_json.run_at` مقارنة بـUTC دون طباعة نصوص حساسة. `last_run_at` مع `enabled=true` يعني claim جارٍ أو عاملًا انقطع؛ يحرره الفشل المؤكد فورًا، ويمكن لعامل واحد استرداده بعد انتهاء lease الافتراضية (300 ثانية). لا تعدل التذكير يدويًا في الإنتاج قبل التأكد من عدم وجود عملية إرسال جارية.
+
+قبل AUTO أو إرسال خطوة Flow يعيد البوت قراءة اتصال Telegram Business ويتحقق من المالك و`can_reply`. عند تعذر التحقق لا يرسل ولا يعيد المحاولة عمياء، ويسجل الحالة ويبلغ المالك بصياغة مهنية.
 
 ## اختبار Bulk Knowledge
 

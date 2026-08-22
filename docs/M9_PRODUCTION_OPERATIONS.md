@@ -2,7 +2,7 @@
 
 ## الحالة
 
-التنفيذ والبوابة المحلية والتشغيلية/Telegram الحية مكتملة في `codex/m9-production-operations`. فُتح PR #5 ونجح CI الأول على Python 3.12/3.13 في run `32544367834`. بقي CI توثيق الإصدار ثم الدمج بعد نجاحه.
+مكتملة ومندمجة في `main` عبر PR #5 بالـSHA `8039d79618eb836ffdcef9c6c221fb8b1ab2798f`. نجح CI التنفيذي run `32544367834` وCI التوثيق النهائي run `32544458281` على Python 3.12/3.13 قبل الدمج.
 
 ## نطاق المرحلة
 
@@ -82,5 +82,5 @@ Docker build: PASS
 - [x] synthetic cleanup + single poller.
 - [x] final full suite after docs: 92 passed.
 - [x] GitHub CI Python 3.12/3.13 في run `32544367834` للـcommit التنفيذي.
-- [ ] GitHub CI بعد commit توثيق بوابة الإصدار.
-- [ ] merge PR بعد CI فقط.
+- [x] GitHub CI بعد commit توثيق بوابة الإصدار في run `32544458281`.
+- [x] merge PR #5 بعد CI فقط.

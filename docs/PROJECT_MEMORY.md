@@ -4,20 +4,24 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **M9 — Production Operations**، والبوابة المحلية والتشغيلية الحية وCI مكتملة؛ الدمج النهائي قيد الإغلاق عبر PR #5.
-- فرع التطوير الحالي: `codex/m9-production-operations`، منشأ من `main` بعد دمج M8.
+- المرحلة الحالية: **M10 — Advanced Automation**، والتنفيذ والبوابات المحلية والتشغيلية وTelegram الحية مكتملة؛ PR/CI قيد الإغلاق.
+- فرع التطوير الحالي: `codex/m10-advanced-automation`، منشأ من `main` بعد دمج M9.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
 - M8 اندمج في `main` عبر PR #4؛ merge SHA: `00cbf89841444c322af18fcc8b143fec83a17596`.
+- M9 اندمج في `main` عبر PR #5؛ merge SHA: `8039d79618eb836ffdcef9c6c221fb8b1ab2798f`.
 - CI إغلاق M6: GitHub Actions run `32535443695` نجح على Python 3.12 و3.13، مع `compileall` وRuff correctness gate و`pytest`.
-- آخر تحقق محلي كامل بعد تحديث وثائق M9: **92 passed, 1 warning**، مع بوابة Ruff الكاملة و`compileall` ناجحين.
+- آخر تحقق محلي كامل لـM10 قبل توثيقها: **106 passed, 1 warning**، مع بوابة Ruff الكاملة و`compileall` وretrieval 14/14 ناجحين.
 - تقييم الاسترجاع الثابت: **14/14 top-1**.
-- رأس PostgreSQL المحلي أصبح `0007`، وبروفة migration المعزولة الكاملة ناجحة.
+- رأس PostgreSQL المحلي أصبح `0008`، وبروفة migration المعزولة الكاملة ناجحة.
 - بوابة Telegram الحية لـM8 نجحت في 2026-08-22، بما فيها عدم التعلم قبل الموافقة والتقييم من العميل وإحصاءات المالك.
 - CI إغلاق M8 النهائي run `32541444456` نجح على Python 3.12 و3.13 قبل دمج PR #4.
 - M9 أضاف Docker/systemd محصنين، readiness/metrics/سجلات JSON، AiRun/audit، backup/restore وpreflight/secret rotation.
 - بوابة M9 الحية نجحت لـ`/health` و`/ready` وmetrics auth، Telegram/DeepSeek/Gemini، AI telemetry من رسالة Business فعلية، backup/restore معزول، وتدوير أسرار داخلي.
 - CI الأول لـM9 في GitHub Actions run `32544367834` نجح على Python 3.12 و3.13؛ شملت مهمة 3.12 أيضًا فحص Compose وبناء صورة الإنتاج.
+- CI النهائي لـM9 في run `32544458281` نجح على Python 3.12 و3.13، ثم اندمج PR #5.
+- M10 وصل Flow/Custom Intent/Reminder/AUTO الفعلي بالـCore العام، مع واجهات عربية ونشر صريح ونسخ Flow ثابتة للجلسات.
+- بوابة M10 الحية نجحت للتدفق الكامل، تذكير مستقبلي مرة واحدة، AUTO حي بصياغة مهنية، API/0008/Docker/backup/restore/preflight، ثم نُظفت البيانات الاصطناعية المحددة فقط.
 - التحذير المعروف: Starlette/FastAPI TestClient deprecation بخصوص `httpx`; لا يمنع التشغيل.
 
 ## ما هو المنتج
@@ -56,7 +60,7 @@ Telegram Business reply
 Telegram image → Gemini Vision → structured evidence → DeepSeek → local safety → approval/reply
 ```
 
-## ما تم إنجازه حتى M9
+## ما تم إنجازه حتى M10
 
 - اتصال Telegram Business الرسمي وتخزين Business Connections.
 - ingest للرسائل مع idempotency وconversation revision.
@@ -99,6 +103,9 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - سجلات JSON منقاة مع trace IDs، وصورة Docker تعمل كمستخدم `secretary` غير جذر.
 - backup PostgreSQL custom-format مع checksum/retention وبروفة restore معزولة وحذف قاعدة البروفة دائمًا.
 - production preflight حي وتدوير ذري لأسرار PostgreSQL والقياسات.
+- Flow/Custom Intent Engine فعلي، بإنشاء ومعاينة ونشر صريح وجلسات snapshot مستقلة.
+- تذكيرات owner-only بمنطقة زمنية قابلة للضبط وتسليم one-shot.
+- AUTO آمن يرسل فعليًا عبر approval claim ويسجل outgoing وSYSTEM audit.
 
 ## دليل إغلاق M6 المحلي — 2026-08-22
 
@@ -137,6 +144,16 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - دُوّر سر PostgreSQL ورمز metrics محليًا دون طباعتهما، وأعيد تشغيل poller كشجرة واحدة، وبقيت القاعدة والبيانات سليمة.
 - رسالة Telegram Business اصطناعية أنشأت AiRun ناجحًا مع latency/tokens وapproval مهني؛ رفض المالك أنشأ audit، ثم نُظفت صفوف الاختبار المحددة وأعيدت المحادثة إلى revision السابق.
 
+## دليل M10 المحلي والحي — 2026-08-22
+
+- 106 اختبارات ناجحة، مع Ruff full وcompileall وretrieval 14/14، ومنها فحص صلاحية AUTO لحظة الإرسال، إلغاء Flow عند الاستلام البشري، وReminder lease recovery.
+- migration `0008` اجتازت rehearsal كاملة، ثم رُحلت القاعدة الحية وأعيد backup 0008 معزولًا مع owners=1/conversations=4/messages=37.
+- صورة Docker 0.10.0 non-root وhealth/readiness/metrics auth/preflight الحية نجحت.
+- أنشئ Flow من Telegram كمسودة، عُوين ونُشر صراحة، ثم بدأه العميل بالنص وجمع سؤالين وأكمله ووصل ملخص مهني للمالك.
+- تذكير مستقبلي حسب timezone قابل للتعديل وصل مرة واحدة، وAUTO أرسل تحية «كيف أقدر أساعدك؟» مرة واحدة دون بطاقة أو أكواد.
+- بعد الاختبار نُظفت العناصر الاصطناعية المحددة وعادت القاعدة إلى messages=37/revision=17 و0 Flow/Intent/Session/Schedule/AiRun اصطناعي.
+- بوابة الموثوقية الأخيرة جعلت claim التذكير lease قابلة للاسترداد، وألزمت AUTO/Flow بإعادة فحص مالك الاتصال وحق الرد قبل كل إرسال؛ لا يعتمد الإرسال على صلاحية مخزنة.
+
 ## قواعد الاستمرارية
 
 1. لا تعيد بناء المشروع من الصفر ما دام التعديل يمكن دمجه في المعمارية الحالية.
@@ -152,7 +169,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة
 
-إعادة CI بعد توثيق بوابة PR #5 ثم دمج M9 إلى `main`. بعد اجتياز بوابة الدمج يبدأ M10 على فرع مستقل، مع تنفيذ الأتمتة المتقدمة فقط عبر Core عام وقابل للبيانات وبوابات حية مناسبة.
+إغلاق M10 عبر commit وPR وCI على Python 3.12/3.13 ثم الدمج إلى `main` بعد نجاح البوابة فقط. بعد الدمج ينفذ التدقيق النهائي الشامل لمعايير V1 ولا تبدأ ميزة مستقبلية غير مقاسة تلقائيًا.
 
 ## ترتيب المراجع عند التعارض
 

@@ -58,12 +58,12 @@ aggregate Prometheus metrics
 2. يتحقق Adapter من Business Connection ويستعيدها عند الحاجة.
 3. تسجل الرسالة idempotently في Contact/Conversation/Message.
 4. ترتفع conversation revision.
-5. debounce يجمع الرسائل المتتابعة بسرعة ويمنع العمل القديم.
-6. يبنى سياق AI من recent messages + profile + knowledge + memory + policies.
-7. DeepSeek يصنف intent/risk/confidence ويولد candidate reply عندما تسمح السياسة.
-8. local policy تحسم `AUTO_REPLY / REQUIRE_APPROVAL / ESCALATE / SILENT / ASK_FOLLOWUP`.
-9. في APPROVAL تحفظ المسودة مع revision وTTL وتظهر بطاقة للمالك.
-10. قبل الإرسال يعاد فحص اتصال Telegram و`can_reply`.
+5. Flow Router يكمل جلسة فعالة أو يطابق Custom Intent منشورة؛ التدفق المالك-المعرف يسبق AI.
+6. إذا لم يوجه التدفق الرسالة، يجمع debounce الرسائل المتتابعة ويمنع العمل القديم.
+7. يبنى سياق AI من recent messages + profile + knowledge + memory + policies + custom intents.
+8. DeepSeek يصنف intent/risk/confidence ويولد candidate reply عندما تسمح السياسة.
+9. local policy تحسم `AUTO_REPLY / REQUIRE_APPROVAL / ESCALATE / SILENT / ASK_FOLLOWUP`.
+10. APPROVAL تعرض بطاقة للمالك؛ AUTO يستخدم claim نفسه دون بطاقة ويسجل SYSTEM audit بعد نجاح الإرسال.
 11. الرد المرسل يسجل في history.
 
 ## مسار صورة
@@ -97,6 +97,10 @@ BusinessProfile يحدد الهوية والنبرة والتعليمات الع
 ## Dynamic Interface
 
 MenuProfile + MenuItem يمثلان واجهة قابلة للبيانات. `app/interface/service.py` يحمل القائمة المناسبة. visibility rules تحدد زرًا دائمًا أو سياقيًا. `app/telegram/keyboards.py` يحول التعريف العام إلى InlineKeyboardMarkup. Adapter هو المكان الوحيد الذي يربط هذه البنية بـaiogram.
+
+## Advanced Automation
+
+`app/flows` و`app/intents` و`app/schedules` لا تستورد aiogram، فتظل قواعد الجلسة والمطابقة والوقت جزءًا من Core. `automation_ui.py`, `schedule_ui.py` وTelegram Adapter تتولى العرض والإرسال فقط. هذه الحدود تسمح بإضافة Adapter لقناة أخرى مستقبلًا دون نسخ عقل السكرتير، لكنها لا تعني أن قناة أخرى مدعومة حاليًا.
 
 ## Rich Text
 
