@@ -24,6 +24,7 @@ from app.db.enums import (
     FlowStatus,
     GlobalMode,
     InterfaceMode,
+    PaymentStatus,
     Visibility,
 )
 
@@ -306,6 +307,45 @@ class Schedule(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class PaymentOrder(Base):
+    __tablename__ = "payment_orders"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_payment_order_amount_positive"),
+        UniqueConstraint("invoice_payload", name="uq_payment_order_payload"),
+        UniqueConstraint("telegram_payment_charge_id", name="uq_payment_order_telegram_charge"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    owner_id: Mapped[int] = mapped_column(
+        ForeignKey("owners.id", ondelete="CASCADE"), index=True
+    )
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    contact_id: Mapped[int] = mapped_column(
+        ForeignKey("contacts.id", ondelete="CASCADE"), index=True
+    )
+    menu_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("menu_items.id", ondelete="SET NULL"), nullable=True
+    )
+    telegram_user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    title: Mapped[str] = mapped_column(String(32))
+    description: Mapped[str] = mapped_column(String(255))
+    currency: Mapped[str] = mapped_column(String(3), default="XTR")
+    amount: Mapped[int] = mapped_column(Integer)
+    invoice_payload: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(32), default=PaymentStatus.CREATED.value, index=True)
+    telegram_payment_charge_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_payment_charge_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    success_message: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Approval(Base):

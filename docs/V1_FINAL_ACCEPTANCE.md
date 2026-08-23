@@ -2,25 +2,63 @@
 
 ## الحالة
 
-بدأ التدقيق النهائي بعد دمج M10. لا يعتبر المشروع مكتملًا حتى تغلق كل فجوة فعلية في نطاق V1، وتجتاز الاختبارات المحلية وPostgreSQL/Docker وTelegram الحية وCI النهائي.
+مرشح الإصدار `1.0.0` مكتمل وظيفيًا على `codex/final-v1-acceptance`. اجتاز البوابات المحلية وقاعدة البيانات وDocker ومزودي الخدمة الحيين. يبقى CI والنشر الآمن على New‑VPS ثم الدمج إلى `main` قبل إعلان الإغلاق النهائي.
 
-## نتائج التدقيق
+## ما أُغلق
 
-المتطلبات 1–20 و23–29 من `MASTER_SPEC.md` لها تنفيذ فعلي وبوابات سابقة، مع هذه الاستدراكات النهائية:
+- استبدلت كل placeholders لوحة المالك بشاشات فعلية للمحادثات، والردود المعلقة، والأشخاص، والأمان، والإيقاف الآمن.
+- أصبحت أوضاع المحادثة والاستلام البشري والرد لمرة واحدة وAI/Memory/Exclusion قابلة للإدارة من Telegram مع Audit Log.
+- يحجب ملخص السياق الأسرار محليًا، ولا يحولها إلى ذاكرة طويلة المدى.
+- أضيف مسار Voice/Audio/Document آمن عبر Gemini ثم سياسة DeepSeek والموافقة نفسها؛ الملفات مدخلات غير موثوقة ولا تدخل السجلات التشغيلية.
+- يستخدم الرد المنظم Native Rich Message الحقيقي، ولا يعود إلى النص العادي إلا بعد رفض Telegram المؤكد، مرة واحدة بلا blind retry.
+- أصبحت الواجهة دورة صريحة: مسودة، معاينة غير تنفيذية، تعديل/ترتيب، تأكيد نشر، وأرشفة الإصدار السابق.
+- شاشة «ماذا يحدث عند التعرف على الطلب؟» تعرض دائمًا ثلاثة إجراءات مفهومة، وتضيف Flows المنشورة إن وجدت.
+- يفهم السياق الردود المختصرة مثل رقم منفرد أو نعم/لا بالرجوع إلى آخر سؤال، دون تغيير الرسالة الأصلية أو التعلم الصامت.
+- يمنع منقح الرد التحية الافتتاحية المتكررة بعد أول رد، ويحذف تنسيق Markdown الخام والرموز البرمجية من الرسالة النهائية.
+- أضيف دفع Telegram Stars مع تحقق pre-checkout، وتسليم بعد `successful_payment` فقط، ومنع التكرار، ودعم `/terms` و`/paysupport`.
+- أضيف دليل المالك العربي الشامل `USER_MANUAL_AR.md`.
 
-- أُغلقت placeholders لوحة المالك للمحادثات، والردود المعلقة، والأشخاص، والأمان، والإيقاف السريع.
-- أصبحت حالة كل محادثة قابلة للإدارة من Telegram: تلقائي، بموافقة، مراقبة، متابعة بشرية، إيقاف، واستبعاد/إعادة.
-- أضيف الرد لمرة واحدة دون تغيير وضع المحادثة، وعرض ملخص سياق متجدد عند الطلب وقبل إعادة السكرتير.
-- ملخص السياق يحجب محليًا الرموز وكلمات المرور والأنماط الحساسة قبل تخزينه أو إدخاله إلى سياق AI.
-- أصبحت صلاحيات AI والذاكرة والاستبعاد لكل Contact قابلة للتغيير من Telegram مع Audit Log.
-- بقي إغلاق media basic handling وRich Message الحقيقي وMenu preview/publish hardening قبل القبول النهائي.
-
-## بوابة لوحة المالك — 2026-08-22
+## البوابة المحلية وقاعدة البيانات — 2026-08-24
 
 ```text
-pytest tests/test_v1_admin.py tests/test_memory_privacy.py: 5 passed
-Ruff focused gate: PASS
-compileall focused gate: PASS
+pytest: 130 passed, 1 known warning
+Ruff full repository gate: PASS
+compileall: PASS
+retrieval regression: 14/14 top-1
+Alembic head/check: 0009 / PASS
+isolated PostgreSQL upgrade → downgrade base → upgrade: PASS
+post-migration backup: PASS
+isolated restore rehearsal: revision 0009, owners=1, conversations=4, messages=37
 ```
 
-التحقق الحي تم من حساب المالك دون تغيير أي حالة حقيقية: شاشة المحادثات عرضت 4 محادثات وحالاتها المهنية، وظهرت تفاصيل المحادثة وأزرار الرد لمرة واحدة/الملخص/الاستلام/الإعادة، وعملت شاشة الأشخاص، وشاشة الأمان والاتصال، وشاشة الإيقاف الآمن بلا placeholder أو raw enum.
+التحذير المعروف متعلق بانتقال Starlette TestClient من httpx، ولا يمثل فشلًا في التطبيق.
+
+## بوابة Docker والتشغيل المحلي — 2026-08-24
+
+```text
+Compose validation/build: PASS
+image package version: 1.0.0
+container runtime user: secretary (non-root)
+/health: 200, version 1.0.0
+/ready: 200 at revision 0009
+/metrics without token: 401
+/metrics with token: 200
+production preflight with local development allowance: PASS
+Telegram API / DeepSeek / Gemini live probes: HTTP 200
+```
+
+لم تُشغّل عملية bot محلية بالتوازي مع New‑VPS، حفاظًا على قاعدة poller واحد لكل token.
+
+## بوابات Telegram الحية المنفذة
+
+- نجح DeepSeek حيًا في ربط الرقم `4` بسؤال سابق عن عدد المجموعات، وصاغ ردًا متعلقًا بالسياق دون تكرار التحية أو Markdown خام؛ بقي القرار ضمن مسار الموافقة.
+- نجح تحليل مستند اصطناعي حيًا عبر مزود الوسائط ثم DeepSeek، مع token usage وقرار موافقة، دون إرسال للعميل.
+- نجح إرسال Native Rich Message منظم عبر Telegram Business فعليًا، ثم حُذفت رسالة الاختبار المحددة فقط.
+- نجح إنشاء رابط فاتورة Telegram Stars بعملة `XTR` دون طباعته أو إرساله لعميل ودون تنفيذ معاملة مالية.
+
+## البوابة النهائية المتبقية
+
+- [ ] GitHub Actions ناجح على Python 3.12 و3.13.
+- [ ] backup جديد على New‑VPS قبل migration مع حفظ rollback.
+- [ ] نشر المرشح على New‑VPS ونجاح `production` preflight، health/readiness/metrics، logs، ورأس `0009`.
+- [ ] دمج PR إلى `main` بعد البوابة الحية فقط، ثم تثبيت New‑VPS على SHA الدمج.

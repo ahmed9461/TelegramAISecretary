@@ -13,6 +13,7 @@ class MenuAction(StrEnum):
     HANDOFF = "HANDOFF"
     OPEN_URL = "OPEN_URL"
     COLLECT_DATA = "COLLECT_DATA"
+    START_PAYMENT = "START_PAYMENT"
 
 
 @dataclass(frozen=True, slots=True)

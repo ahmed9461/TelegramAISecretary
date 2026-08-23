@@ -134,7 +134,7 @@ def test_readiness_requires_database_at_source_head() -> None:
     factory = make_factory()
     with factory() as session:
         session.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32))"))
-        session.execute(text("INSERT INTO alembic_version VALUES ('0008')"))
+        session.execute(text("INSERT INTO alembic_version VALUES ('0009')"))
         session.commit()
     settings = Settings(
         _env_file=None,
@@ -145,8 +145,8 @@ def test_readiness_requires_database_at_source_head() -> None:
     snapshot = readiness_snapshot(settings, session_factory=factory)
 
     assert snapshot.ready is True
-    assert snapshot.database_revision == "0008"
-    assert snapshot.expected_revision == "0008"
+    assert snapshot.database_revision == "0009"
+    assert snapshot.expected_revision == "0009"
 
 
 def test_production_readiness_requires_metrics_authentication() -> None:

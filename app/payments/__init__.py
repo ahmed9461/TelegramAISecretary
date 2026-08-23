@@ -1,0 +1,1 @@
+"""Owner-configured payment capabilities."""

@@ -28,6 +28,7 @@ _MENU_ACTIONS = {
     "OPEN_URL": "فتح رابط",
     "HANDOFF": "تحويل للمتابعة الشخصية",
     "START_FLOW": "بدء إجراء منظم",
+    "START_PAYMENT": "دفع آمن بنجوم Telegram",
 }
 
 _KNOWLEDGE_TYPES = {

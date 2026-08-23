@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     schedule_poll_seconds: float = 30.0
     schedule_batch_size: int = 20
     schedule_claim_timeout_seconds: int = 300
+    payment_order_ttl_minutes: int = 30
+    payment_terms_text: str = (
+        "راجع وصف المنتج أو الخدمة قبل الدفع. عند وجود أي استفسار تواصل مع الدعم قبل إتمام العملية."
+    )
+    payment_terms_url: str = ""
+    payment_support_text: str = (
+        "للمساعدة في عملية دفع، أرسل رقم الطلب ووصف المشكلة إلى مالك الخدمة."
+    )
 
     deepseek_api_key: str = Field(default="", repr=False)
     deepseek_base_url: str = "https://api.deepseek.com"

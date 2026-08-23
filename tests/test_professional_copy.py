@@ -20,3 +20,17 @@ def test_internal_codes_are_not_owner_facing_copy() -> None:
     assert knowledge_type_text("SERVICE") == "خدمة"
     assert "PUBLIC" not in knowledge_visibility_text("PUBLIC")
     assert polish_candidate_reply("السبب: HIGH_RISK\nسأتولى تحويل طلبك.") == ("سأتولى تحويل طلبك.")
+
+
+def test_customer_copy_removes_only_repeated_opening_greeting() -> None:
+    assert polish_candidate_reply(
+        "هلا والله! الباقة الأنسب لأربع مجموعات هي الباقة المرنة.",
+        allow_greeting=False,
+    ) == "الباقة الأنسب لأربع مجموعات هي الباقة المرنة."
+    assert polish_candidate_reply("أهلًا بك! كيف أقدر أساعدك؟") == "أهلًا بك! كيف أقدر أساعدك؟"
+
+
+def test_customer_copy_removes_raw_markdown_markers() -> None:
+    assert polish_candidate_reply(
+        "# الباقات\n\n- **الخيار المرن**\n- `الخيار الاحترافي`"
+    ) == "الباقات\n\n• الخيار المرن\n• الخيار الاحترافي"

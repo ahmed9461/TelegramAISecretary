@@ -28,6 +28,7 @@ from app.approvals.service import (
     preview_claim,
     reject,
 )
+from app.audit.service import write_audit_log
 from app.config import get_settings
 from app.conversations.context import build_ai_context
 from app.conversations.ingest import ingest_message
@@ -738,8 +739,14 @@ async def _route_message_to_automation(
     bot: Bot,
     connection_id: str,
     conversation_id: int,
+    trigger_message_id: int,
 ) -> bool:
     text = (message.text or message.caption or "").strip()
+    post_action = "FLOW"
+    approval_id = 0
+    fixed_response = ""
+    contact_name = "غير معروف"
+    chat_id = message.chat.id
     with SessionLocal() as session:
         conversation = session.get(Conversation, conversation_id)
         if conversation is None:
@@ -800,26 +807,129 @@ async def _route_message_to_automation(
                 owner_id=conversation.owner_id,
                 text=text,
             )
-            if matched is None or matched.action_type != "START_FLOW":
+            if matched is None or matched.action_type == "NONE":
                 return False
-            raw_flow_id = matched.action_config.get("flow_id")
-            if not isinstance(raw_flow_id, int) and not str(raw_flow_id).isdigit():
-                return False
-            try:
-                turn = start_flow(
+            contact = session.get(Contact, conversation.contact_id)
+            contact_name = contact.display_name if contact else "غير معروف"
+            if matched.action_type == "DRAFT_RESPONSE":
+                fixed_response = str(matched.action_config.get("text") or "").strip()
+                if not fixed_response:
+                    return False
+                approval = create_approval(
                     session,
                     conversation=conversation,
-                    flow_id=int(raw_flow_id),
+                    trigger_message_id=trigger_message_id,
+                    candidate_response=fixed_response,
+                    reason=format_approval_reason(
+                        source="CUSTOM_INTENT",
+                        reason_code="OWNER_REVIEW",
+                        intent=matched.name,
+                    ),
+                    context={"intent": matched.name, "custom_intent_id": matched.intent_id},
+                    ttl_hours=settings.approval_ttl_hours,
                 )
-            except ValueError:
-                logger.warning(
-                    "custom_intent_flow_unavailable intent=%s conversation=%s",
-                    matched.intent_id,
+                approval_id = approval.id
+                post_action = "DRAFT_RESPONSE"
+                turn = None
+            elif matched.action_type == "HANDOFF":
+                ApprovalRepository.invalidate_pending(
+                    session,
                     conversation.id,
+                    status="SUPERSEDED",
+                )
+                conversation.state = ConversationState.HUMAN_TAKEOVER.value
+                conversation.revision += 1
+                write_audit_log(
+                    session,
+                    owner_id=conversation.owner_id,
+                    actor="SYSTEM",
+                    action="CUSTOM_INTENT_HANDOFF",
+                    entity_type="CONVERSATION",
+                    entity_id=conversation.id,
+                    metadata={"custom_intent_id": matched.intent_id},
+                )
+                session.commit()
+                post_action = "HANDOFF"
+                turn = None
+            elif matched.action_type != "START_FLOW":
+                logger.warning(
+                    "custom_intent_action_unsupported intent=%s action=%s",
+                    matched.intent_id,
+                    matched.action_type,
                 )
                 return False
-            session.commit()
+            else:
+                raw_flow_id = matched.action_config.get("flow_id")
+                if not isinstance(raw_flow_id, int) and not str(raw_flow_id).isdigit():
+                    return False
+                try:
+                    turn = start_flow(
+                        session,
+                        conversation=conversation,
+                        flow_id=int(raw_flow_id),
+                    )
+                except ValueError:
+                    logger.warning(
+                        "custom_intent_flow_unavailable intent=%s conversation=%s",
+                        matched.intent_id,
+                        conversation.id,
+                    )
+                    return False
+                session.commit()
 
+    if post_action == "DRAFT_RESPONSE":
+        await _send_approval_card(
+            bot,
+            approval_id=approval_id,
+            text=(
+                "💬 رد ثابت مقترح لطلب معروف\n\n"
+                f"👤 {contact_name}\n"
+                f"📝 الرسالة: {text[:1000]}\n\n"
+                f"✍️ الرد المعتمد في الإعداد:\n{fixed_response}\n\n"
+                f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
+            ),
+        )
+        return True
+
+    if post_action == "HANDOFF":
+        await bot.send_message(
+            chat_id=settings.owner_telegram_id,
+            text=(
+                "👤 طلب يحتاج متابعتك المباشرة\n\n"
+                f"من: {contact_name}\n"
+                f"الرسالة: {text[:1000]}\n\n"
+                "أوقفت الردود الآلية لهذه المحادثة حتى تعيدها للسكرتير."
+            ),
+        )
+        can_send, _ = await _live_reply_permission(bot, connection_id)
+        if can_send:
+            adapter = AiogramTelegramAdapter(bot)
+            try:
+                sent_id = await adapter.send_text(
+                    business_connection_id=connection_id,
+                    chat_id=chat_id,
+                    text="وصل طلبك، وسيتابعه المسؤول مباشرة.",
+                    attach_default_menu=False,
+                )
+            except Exception:
+                logger.exception(
+                    "custom_intent_handoff_ack_uncertain conversation=%s",
+                    conversation_id,
+                )
+            else:
+                with SessionLocal() as session:
+                    conversation = session.get(Conversation, conversation_id)
+                    if conversation is not None:
+                        ConversationRepository.append_outgoing(
+                            session,
+                            conversation=conversation,
+                            telegram_message_id=sent_id,
+                            text="وصل طلبك، وسيتابعه المسؤول مباشرة.",
+                        )
+                        session.commit()
+        return True
+
+    assert turn is not None
     await _send_flow_turn(
         bot,
         connection_id=connection_id,
@@ -1491,6 +1601,7 @@ async def on_business_message(message: Message, bot: Bot) -> None:
         bot=bot,
         connection_id=connection_id,
         conversation_id=result.conversation.id,
+        trigger_message_id=result.message.id,
     ):
         debouncer.cancel(key)
         return
@@ -1603,7 +1714,12 @@ async def _shutdown() -> None:
 
 
 def build_dispatcher() -> Dispatcher:
+    from app.telegram.payment_ui import router as payment_router
+
     dp = Dispatcher()
+    # Payment confirmation must run before the generic Business-message ingester so a receipt is
+    # never interpreted as a customer request.
+    dp.include_router(payment_router)
     dp.include_router(router)
     dp.shutdown.register(_shutdown)
     return dp

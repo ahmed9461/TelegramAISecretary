@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.ai.copy import polish_candidate_reply
 from app.ai.provider import AIProvider
 from app.ai.schemas import Decision
 from app.db.enums import DecisionAction
@@ -26,6 +27,10 @@ class TextPipeline:
             candidate = ""
         else:
             candidate = await self.ai.generate_reply(text=text, context=context, decision=decision)
+            candidate = polish_candidate_reply(
+                candidate,
+                allow_greeting=not bool(context.get("conversation_has_prior_reply")),
+            )
         usage = getattr(self.ai, "token_usage", {})
         return TextResult(
             decision=decision,

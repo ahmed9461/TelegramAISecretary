@@ -50,6 +50,7 @@ async def main() -> None:
             bot,
             allowed_updates=[
                 "message",
+                "pre_checkout_query",
                 "callback_query",
                 "business_connection",
                 "business_message",

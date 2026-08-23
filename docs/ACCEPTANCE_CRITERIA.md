@@ -191,7 +191,7 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 ## إغلاق baseline الحالي
 
 - [x] M0–M10 موثقة ومغلقة ضمن نطاقها الحالي.
-- [x] `main` هو baseline المنتج بالإصدار `0.10.0` ورأس migration `0008`.
+- [x] `main` بقي baseline المستقر بالإصدار `0.10.0` ورأس migration `0008` حتى اجتياز مرشح V1 للبوابة الحية النهائية.
 - [x] لا توجد M11 نشطة أو مطلوبة لإكمال النطاق الحالي.
 - [x] أي milestone لاحقة يجب أن تملك نطاقًا جديدًا، سببًا واضحًا، ومعايير قبول مستقلة قبل التنفيذ.
 ## V1 Final Acceptance
@@ -201,7 +201,12 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] الأشخاص يدعمون AI/Memory toggles والوصول للذاكرة مع audit وowner isolation.
 - [x] شاشة الأمان تفحص Business Connection وتشرح الحدود المهنية بلا placeholder.
 - [x] ملخص المحادثة يحجب الأنماط الحساسة قبل الحفظ وسياق AI.
-- [ ] Voice/Document basic handling حي وآمن.
-- [ ] `sendRichMessage` فعلي مع fallback مؤكد بلا duplicate retry.
-- [ ] Menu preview/publish واختبار التعديل دون نشر صامت.
+- [x] Voice/Document basic handling حي وآمن.
+- [x] `sendRichMessage` فعلي مع fallback مؤكد بلا duplicate retry.
+- [x] Menu preview/publish واختبار التعديل دون نشر صامت.
+- [x] الردود المختصرة مرتبطة بالسؤال السابق دون تعلم أو تعديل للرسالة الأصلية.
+- [x] التحية لا تتكرر بعد دخول المحادثة في الموضوع، ولا يظهر Markdown خام أو reason code للعميل.
+- [x] Custom Intent يقدم إجراءات متعددة مفهومة حتى عند عدم وجود Flow منشور.
+- [x] Telegram Stars يتحقق من XTR/المبلغ/العميل ولا يسلم إلا بعد `successful_payment` مطابق وغير مكرر.
+- [x] دليل مالك عربي شامل يغطي الإعداد والتشغيل والخصوصية والقوائم والدفع والتشخيص.
 - [ ] بوابة V1 المحلية/DB/Docker/backup/live/CI النهائية ودمج PR.

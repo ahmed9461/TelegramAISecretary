@@ -4,24 +4,25 @@
 
 ## الحالة الحالية
 
-**M10 — Advanced Automation مكتملة ومندمجة في `main`** عبر PR #6 بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`. الإصدار المرجعي الحالي هو **0.10.0**.
+**مرشح V1 مكتمل وظيفيًا** على `codex/final-v1-acceptance`. الإصدار المرشح هو **1.0.0** ورأس PostgreSQL هو **0009**. لم يدمج إلى `main` بعد؛ ينتظر بوابة CI والنشر النهائي على New‑VPS.
 
-أغلقت M10 بعد نجاح البوابات المحلية والحية وPostgreSQL/Docker وGitHub Actions. نجح CI النهائي بعد تحديث دليل الإغلاق في run `32547007628` على Python 3.12 و3.13، ثم تم الدمج إلى `main`.
+نجحت البوابات المحلية والحية لمحادثة السياق والوسائط وNative Rich Message وTelegram Stars، مع PostgreSQL/Docker ومزودي Telegram وDeepSeek وGemini. يبقى `main` على baseline M10 حتى نجاح بوابة الإنتاج، تنفيذًا لقاعدة عدم الدمج قبل الاختبار الحي النهائي.
 
-بهذا تعتبر الخطة الأساسية المنفذة من M0 حتى M10 **مغلقة وظيفيًا ضمن نطاقها الحالي**. لا توجد مرحلة M11 نشطة أو مطلوبة لإكمال النطاق الحالي؛ أي M11 مستقبلية تكون توسعة جديدة تُعرّف صراحة بعد وجود حاجة مقاسة أو متطلب جديد.
+الخطة الأساسية M0–M10 مغلقة، وV1 يغلق فجوات القبول النهائية دون فتح M11 أو V2 تلقائيًا. دليل الاستخدام المفصل للمالك في `docs/USER_MANUAL_AR.md`.
 
-آخر بوابة إغلاق موثقة لـM10:
+آخر بوابة محلية موثقة لمرشح V1:
 
 ```text
 retrieval evaluation: 14/14 top-1
 Ruff full gate: PASS
 compileall: PASS
-pytest: 106 passed, 1 warning
-PostgreSQL head: 0008
+pytest: 130 passed, 1 warning
+PostgreSQL head: 0009
 isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS
-GitHub Actions final CI: 32547007628 PASS (Python 3.12/3.13)
+health/ready/metrics auth: PASS
+Telegram/DeepSeek/Gemini live probes: PASS
 ```
 
 ## ما يعمل الآن
@@ -30,17 +31,19 @@ GitHub Actions final CI: 32547007628 PASS (Python 3.12/3.13)
 - استقبال الرسائل وتخزين contacts/conversations/messages مع idempotency.
 - debounce وconversation revision لمنع الردود القديمة.
 - DeepSeek للنص/reasoning والرد النهائي.
-- Gemini Vision لتحليل الصور قبل DeepSeek.
+- Gemini لتحليل الصور والصوت والمستندات المدعومة قبل DeepSeek.
 - Owner approval cards مع Send / Edit / Sources / Learn / Reject.
 - فحص `can_reply` قبل approved send وحماية من الإرسال المكرر/غير المؤكد.
 - BusinessProfile + Knowledge + ContactMemory + ResponsePolicy.
 - PUBLIC / INTERNAL / PRIVATE knowledge boundaries.
 - إدارة المعرفة والذاكرة والقواعد من Telegram.
 - Bulk Knowledge: لصق نص طويل أو TXT/MD/CSV/JSON/YAML ثم preview واعتماد جماعي.
-- Telegram native Rich Messages عبر MessageEntity، بدون raw HTML/Markdown من النموذج.
+- Telegram Native Rich Messages للردود المنظمة، مع fallback مؤكد بلا تكرار وبدون raw HTML/Markdown من النموذج.
 - Dynamic Menu/Button Engine مع `AI_ONLY / CUSTOM_MENU / HYBRID`.
 - أزرار 🌐 دائمة و🎯 سياقية تظهر حسب موضوع الرسالة/الرد.
 - أزرار رد ثابت، URL، وHandoff للمتابعة البشرية.
+- دورة مسودة/معاينة/ترتيب/نشر صريحة للأزرار؛ لا يصل تعديل غير منشور للعملاء.
+- فهم سياقي للأرقام ونعم/لا والردود القصيرة، ومنع التحية المتكررة بعد دخول الموضوع.
 - retry محدود لرسائل الإدارة عند Telegram network errors، مع إبقاء customer sends fail-closed.
 - استرجاع عربي/إنجليزي مقاس وقابل للتفسير مع استبعاد PRIVATE والمنتهي.
 - كشف تعارض الحقائق ورفعها لموافقة المالك بدل الاختيار الصامت.
@@ -59,6 +62,7 @@ GitHub Actions final CI: 32547007628 PASS (Python 3.12/3.13)
 - Custom Intents قابلة للإنشاء والتعديل والتعطيل والحذف بعتبة يحددها المالك، دون تجاوز سياسة الأمان.
 - تذكيرات owner-only بمنطقة زمنية قابلة للضبط وتسليم one-shot غير مكرر.
 - AUTO فعلي للردود LOW-risk عالية الثقة والمبنية على PUBLIC، مع idempotency/audit وفشل مغلق عند عدم يقين الإرسال.
+- دفع Telegram Stars بعملة XTR مع تحقق pre-checkout وتسليم بعد successful payment فقط، ودعم شروط ودعم الدفع القابلين للضبط.
 
 ## Quick Start — Windows
 

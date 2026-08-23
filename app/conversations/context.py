@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.brain.service import build_brain_context
+from app.conversations.continuity import resolve_conversation_continuity
 from app.db.enums import ConversationState, GlobalMode, Visibility
 from app.db.models import Conversation, CustomIntent, Message, Owner
 from app.intents.service import match_custom_intent
@@ -64,6 +65,7 @@ def build_ai_context(
         )
     )
     rows.reverse()
+    continuity = resolve_conversation_continuity(query, rows)
 
     recent_messages = [
         {
@@ -79,7 +81,7 @@ def build_ai_context(
     hits = retrieve_knowledge(
         session,
         owner_id=conversation.owner_id,
-        query=query,
+        query=continuity.resolved_text,
         limit=knowledge_top_k,
     )
     trusted_knowledge = [
@@ -119,7 +121,7 @@ def build_ai_context(
     matched_intent = match_custom_intent(
         session,
         owner_id=conversation.owner_id,
-        text=query,
+        text=continuity.resolved_text,
     )
 
     return BuiltContext(
@@ -128,6 +130,11 @@ def build_ai_context(
             "conversation_state": conversation.state,
             "global_mode": global_mode,
             "conversation_summary": conversation.summary,
+            "conversation_has_prior_reply": continuity.has_prior_outgoing,
+            "prior_reply_count": continuity.prior_outgoing_count,
+            "contextual_short_reply": continuity.contextual_short_reply,
+            "resolved_user_message": wrap_untrusted(continuity.resolved_text),
+            "last_outgoing_question": wrap_untrusted(continuity.last_outgoing_question),
             "recent_messages": recent_messages,
             "trusted_knowledge": trusted_knowledge,
             "has_grounding": bool(hits),

@@ -421,3 +421,40 @@ Goal: the repository itself must be sufficient context for a new developer/AI wi
 - ملخص المحادثة يحجب الأنماط الحساسة محليًا ولا يحولها إلى ذاكرة طويلة المدى.
 - البوابة المركزة: 5 اختبارات ناجحة وRuff/compileall ناجحان.
 - البوابة الحية قرأت الشاشات الأربع وتفاصيل محادثة دون تغيير إعداد أو إرسال رد لعميل حقيقي.
+
+## V1 Final Acceptance — Conversation, media, interface, and payments
+
+**Status: مكتمل وظيفيًا؛ CI/New‑VPS/الدمج قيد التنفيذ.**
+
+### Implemented
+
+- حل سياقي مؤقت للأرقام ونعم/لا والردود القصيرة بالرجوع إلى آخر سؤال صادر، مع إبقاء الرسالة الأصلية كما هي وعدم إنشاء تعلم.
+- منع التحية الافتتاحية بعد وجود رد سابق وتنظيف Markdown الخام والعناوين والرموز البرمجية قبل التسليم.
+- Voice/Audio/Document basic handling آمن عبر Gemini ثم DeepSeek والسياسة العامة نفسها، مع redaction وسجلات metadata محدودة.
+- Native Rich Message منظم فعليًا، وplain-text fallback مرة واحدة فقط بعد `TelegramBadRequest` مؤكد.
+- دورة Menu draft/preview/edit/reorder/publish؛ المعاينة لا تنفذ الإجراء والتغيير لا يصل للعملاء قبل تأكيد النشر.
+- Custom Intent يعرض دائمًا ثلاثة إجراءات: تحسين الفهم فقط، رد ثابت بموافقة، أو متابعة بشرية، ويضيف أي Flow منشور.
+- Telegram Stars: PaymentOrder عند migration `0009`، إنشاء فاتورة XTR، تحقق pre-checkout، idempotency، وتسليم بعد successful payment فقط.
+- دليل عربي شامل للمالك يغطي التشغيل والإعداد والحدود والواجهة والدفع والتقييم والتشخيص.
+
+### Automated/local gate — 2026-08-24
+
+```text
+pytest: 130 passed, 1 known warning
+Ruff full repository gate: PASS
+compileall: PASS
+retrieval regression: 14/14 top-1
+Alembic current/head: 0009 / PASS
+isolated migration rehearsal: PASS
+post-migration backup/isolated restore: PASS
+Docker Compose config/build/non-root: PASS
+health/ready/metrics auth: 200/200/401→200
+```
+
+### Live provider/Telegram gate — 2026-08-24
+
+- Telegram/DeepSeek/Gemini preflight الحي: HTTP 200.
+- ربط النموذج الرقم `4` بسؤال عدد المجموعات دون تكرار تحية أو Markdown خام؛ بقي ضمن REQUIRE_APPROVAL.
+- تحليل مستند اصطناعي نجح دون إرسال للعميل، وNative Rich Message أُرسل حيًا ثم حُذف الاختبار المحدد.
+- أنشئ رابط Telegram Stars XTR بنجاح دون طباعته أو تنفيذه ماليًا.
+- لم تشغل عملية bot محلية ثانية؛ poller الإنتاج على New‑VPS بقي الوحيد.
