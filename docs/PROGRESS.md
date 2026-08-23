@@ -413,7 +413,7 @@ Goal: the repository itself must be sufficient context for a new developer/AI wi
 
 ## V1 Final Acceptance — Owner administration
 
-**Status: لوحة المالك أُغلقت محليًا وحيًا؛ بقية فجوات V1 قيد التنفيذ.**
+**Status: مكتمل ضمن V1 ومندمج في `main`.**
 
 - اندمج M10 عبر PR #6 بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22` بعد CI النهائي run `32547007628`.
 - استُبدلت أقسام المحادثات/بانتظارك/الأشخاص/الأمان/الإيقاف الوهمية بشاشات owner-only فعلية.
@@ -424,7 +424,7 @@ Goal: the repository itself must be sufficient context for a new developer/AI wi
 
 ## V1 Final Acceptance — Conversation, media, interface, and payments
 
-**Status: مكتمل وظيفيًا؛ CI/New‑VPS/الدمج قيد التنفيذ.**
+**Status: مكتمل ومندمج في `main` عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`.**
 
 ### Implemented
 
@@ -468,3 +468,4 @@ health/ready/metrics auth: 200/200/401→200
 - نجح على الخادم فهم `4` كسياق للعدد دون تحية متكررة أو Markdown، ونجح مسار المستند، وإنشاء رابط XTR غير مرسل دون معاملة مالية.
 - backup ما بعد النشر استعيد معزولًا عند `0009`: owners=1/conversations=2/messages=46/payment_orders=0، ثم حُذفت قاعدة البروفة وحدها.
 - api/bot يعملان بالمستخدم `secretary` مع restart=0، ومسح السجلات أعاد 0 أخطاء/Traceback/تعارض polling.
+- نجح CI التوثيق النهائي run `32671236353`، ثم اندمج PR #9 بعد البوابة الحية وثُبت New‑VPS على merge SHA `db68fda` مع readiness عند `0009`.

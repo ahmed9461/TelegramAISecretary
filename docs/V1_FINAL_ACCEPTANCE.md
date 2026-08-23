@@ -2,7 +2,7 @@
 
 ## الحالة
 
-مرشح الإصدار `1.0.0` مكتمل وظيفيًا على `codex/final-v1-acceptance`. اجتاز البوابات المحلية وقاعدة البيانات وDocker وGitHub Actions والنشر الحي على New‑VPS. بقي دمج PR #9 إلى `main` وتثبيت الخادم على SHA الدمج قبل إعلان الإغلاق النهائي.
+الإصدار `1.0.0` مكتمل ومندمج في `main` عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`. اجتاز البوابات المحلية وقاعدة البيانات وDocker وGitHub Actions والنشر الحي، وثُبت New‑VPS على SHA الدمج.
 
 ## ما أُغلق
 
@@ -56,12 +56,13 @@ Telegram API / DeepSeek / Gemini live probes: HTTP 200
 - نجح إرسال Native Rich Message منظم عبر Telegram Business فعليًا، ثم حُذفت رسالة الاختبار المحددة فقط.
 - نجح إنشاء رابط فاتورة Telegram Stars بعملة `XTR` دون طباعته أو إرساله لعميل ودون تنفيذ معاملة مالية.
 
-## البوابة النهائية المتبقية
+## البوابة النهائية
 
 - [x] GitHub Actions run `32670663258` ناجح على Python 3.12 و3.13، مع build للصورة في 3.12.
+- [x] GitHub Actions run `32671236353` ناجح بعد توثيق دليل الإنتاج.
 - [x] backup جديد على New‑VPS قبل migration مع حفظ صور rollback وstash لملف Docker السابق.
 - [x] نشر المرشح على New‑VPS ونجاح `production` preflight، health/readiness/metrics، logs، ورأس `0009`.
-- [ ] دمج PR إلى `main` بعد البوابة الحية فقط، ثم تثبيت New‑VPS على SHA الدمج.
+- [x] دمج PR #9 إلى `main` بعد البوابة الحية فقط، ثم تثبيت New‑VPS على SHA الدمج `db68fda`.
 
 ## بوابة New‑VPS — 2026-08-24
 

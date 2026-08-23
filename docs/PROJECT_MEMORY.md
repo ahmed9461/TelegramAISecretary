@@ -4,8 +4,8 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **V1 Final Acceptance**؛ مرشح `1.0.0` اجتاز CI وNew‑VPS حيًا، وبقي دمج PR #9 وتثبيت SHA الدمج.
-- فرع التطوير الحالي: `codex/final-v1-acceptance`، محدث على baseline الإنتاج `aa7cd4f` بعد إصلاحات Docker/preflight.
+- المرحلة الحالية: **V1 مكتملة** بالإصدار `1.0.0` ورأس migration `0009`.
+- V1 اندمجت في `main` عبر PR #9؛ merge SHA: `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`، وNew‑VPS مثبت عليه.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
 - M8 اندمج في `main` عبر PR #4؛ merge SHA: `00cbf89841444c322af18fcc8b143fec83a17596`.
@@ -171,6 +171,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - دورة القائمة أصبحت draft/preview/publish صريحة، وأصبحت شاشة Custom Intent تعرض دائمًا تحسين الفهم، ردًا ثابتًا بموافقة، وتحويلًا للبشر، مع Flows المنشورة إن وجدت.
 - دليل المالك العربي الشامل موجود في `docs/USER_MANUAL_AR.md`.
 - GitHub Actions run `32670663258` نجح على Python 3.12 و3.13. نشر commit `137d939` على New‑VPS نجح عند `0009` وproduction preflight كامل.
+- GitHub Actions run `32671236353` نجح بعد إضافة أدلة النشر، ثم اندمج PR #9 وثُبت New‑VPS على merge SHA `db68fda`.
 - backup قبل النشر استعيد عند `0008` وbackup بعده استعيد عند `0009` بأعداد الإنتاج 1/2/46 دون فقد، والحاويتان non-root/restart=0 والسجلات بلا أخطاء.
 
 ## قواعد الاستمرارية
@@ -188,7 +189,7 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 
 ## الخطوة القادمة
 
-دمج PR #9 إلى `main` بعد نجاح البوابة الحية، ثم تثبيت New‑VPS على SHA الدمج وتسجيل دليل الإغلاق النهائي دون حذف backup/rollback.
+لا توجد مرحلة تطوير مفتوحة. راقب الاستخدام الحقيقي والمقاييس والتقييمات، ولا تفتح V1.1/M11 إلا لمتطلب جديد واضح أو مشكلة مقاسة. احتفظ بنسخ V1 وصور rollback حتى انتهاء مدة الاحتفاظ التشغيلية.
 
 ## ترتيب المراجع عند التعارض
 
