@@ -23,3 +23,11 @@ def should_reject_long_term_memory(text: str) -> bool:
     if not normalized:
         return True
     return any(pattern.search(normalized) for pattern in _SENSITIVE_PATTERNS)
+
+
+def redact_sensitive_summary_text(text: str) -> str:
+    """Keep operational summaries useful without copying secret-like values."""
+    redacted = text
+    for pattern in _SENSITIVE_PATTERNS:
+        redacted = pattern.sub("[بيانات حساسة محجوبة]", redacted)
+    return redacted

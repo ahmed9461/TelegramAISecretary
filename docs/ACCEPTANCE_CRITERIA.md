@@ -194,3 +194,14 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] `main` هو baseline المنتج بالإصدار `0.10.0` ورأس migration `0008`.
 - [x] لا توجد M11 نشطة أو مطلوبة لإكمال النطاق الحالي.
 - [x] أي milestone لاحقة يجب أن تملك نطاقًا جديدًا، سببًا واضحًا، ومعايير قبول مستقلة قبل التنفيذ.
+## V1 Final Acceptance
+
+- [x] لوحة المحادثات فعلية وتعرض الحالة والسياق والرد المعلق دون raw enums.
+- [x] المالك يستطيع الاستلام/الإعادة/الإيقاف/الاستبعاد والرد لمرة واحدة من Telegram.
+- [x] الأشخاص يدعمون AI/Memory toggles والوصول للذاكرة مع audit وowner isolation.
+- [x] شاشة الأمان تفحص Business Connection وتشرح الحدود المهنية بلا placeholder.
+- [x] ملخص المحادثة يحجب الأنماط الحساسة قبل الحفظ وسياق AI.
+- [ ] Voice/Document basic handling حي وآمن.
+- [ ] `sendRichMessage` فعلي مع fallback مؤكد بلا duplicate retry.
+- [ ] Menu preview/publish واختبار التعديل دون نشر صامت.
+- [ ] بوابة V1 المحلية/DB/Docker/backup/live/CI النهائية ودمج PR.

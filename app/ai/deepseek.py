@@ -106,8 +106,8 @@ class DeepSeekAIProvider:
         system = (
             "You draft the candidate reply for a configurable AI secretary. "
             "Follow the owner-controlled business profile and response policies. Use only supplied "
-            "trusted knowledge, safe contact memory, recent conversation context, and visual "
-            "evidence. "
+            "trusted knowledge, safe contact memory, recent conversation context, and grounded "
+            "image/audio/document evidence supplied by the perception layer. "
             "PUBLIC knowledge may be stated. INTERNAL knowledge may guide behavior but must not be "
             "quoted or disclosed as internal information. Contact memory may personalize the reply "
             "but must not be treated as proof of a current price, availability, deadline, or "

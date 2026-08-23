@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     gemini_max_retries: int = 2
     gemini_retry_base_seconds: float = 1.0
     max_image_bytes: int = 10_000_000
+    max_media_bytes: int = 18_000_000
 
     openai_api_key: str = Field(default="", repr=False)
     openai_model: str = ""
