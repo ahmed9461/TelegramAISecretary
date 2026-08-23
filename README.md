@@ -4,13 +4,13 @@
 
 ## الحالة الحالية
 
-**مرشح V1 مكتمل وظيفيًا** على `codex/final-v1-acceptance`. الإصدار المرشح هو **1.0.0** ورأس PostgreSQL هو **0009**. نجح CI والنشر الحي على New‑VPS؛ بقي دمج PR #9 وتثبيت SHA الدمج.
+**V1 مكتملة ومندمجة في `main`** عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`. الإصدار الحالي هو **1.0.0** ورأس PostgreSQL هو **0009**، وNew‑VPS مثبت على SHA الدمج بعد نجاح البوابة الحية.
 
 نجحت البوابات المحلية والحية لمحادثة السياق والوسائط وNative Rich Message وTelegram Stars، مع PostgreSQL/Docker ومزودي Telegram وDeepSeek وGemini. يبقى `main` على baseline M10 حتى نجاح بوابة الإنتاج، تنفيذًا لقاعدة عدم الدمج قبل الاختبار الحي النهائي.
 
 الخطة الأساسية M0–M10 مغلقة، وV1 يغلق فجوات القبول النهائية دون فتح M11 أو V2 تلقائيًا. دليل الاستخدام المفصل للمالك في `docs/USER_MANUAL_AR.md`.
 
-آخر بوابة محلية موثقة لمرشح V1:
+آخر بوابة إغلاق موثقة لـV1:
 
 ```text
 retrieval evaluation: 14/14 top-1
@@ -22,6 +22,7 @@ isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS
 GitHub Actions run 32670663258 (Python 3.12/3.13): PASS
+GitHub Actions documentation run 32671236353: PASS
 New-VPS production health/ready/metrics/backup-restore: PASS
 Telegram/DeepSeek/Gemini live probes: PASS
 ```

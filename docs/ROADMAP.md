@@ -96,11 +96,11 @@
 
 ## V1 Final Acceptance
 
-الحالة: **مرشح V1 اجتاز CI وNew‑VPS؛ الدمج النهائي قيد التنفيذ**.
+الحالة: **مكتمل ومندمج في `main` عبر PR #9** بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`.
 
 أغلقت هذه المرحلة لوحة المالك الفعلية، media basic handling، Native Rich Message مع fallback مؤكد، ودورة مسودة/معاينة/نشر للواجهة. وأضيفت استجابة سياقية للردود المختصرة، منع تكرار التحية، إجراءات Custom Intent الواضحة، ودفع Telegram Stars الآمن لأنها فجوات استخدام فعلية ظهرت في البوابة الحية. مرشح الإصدار هو `1.0.0` ورأس migration هو `0009`.
 
-البوابات المحلية وقاعدة البيانات وDocker وGitHub Actions run `32670663258` والنشر النهائي على New‑VPS مع backup/restore/rollback وproduction preflight ناجحة. لا تغلق المرحلة إلا بعد دمج PR #9 وتثبيت الخادم على SHA الدمج.
+البوابات المحلية وقاعدة البيانات وDocker وGitHub Actions runs `32670663258` و`32671236353` والنشر النهائي على New‑VPS مع backup/restore/rollback وproduction preflight ناجحة. اندمج PR #9 بعد البوابة الحية وثُبت الخادم على SHA الدمج.
 
 ## قاعدة التخطيط
 
