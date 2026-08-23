@@ -4,6 +4,7 @@ from io import BytesIO
 
 from aiogram import Bot
 from aiogram.enums import ChatAction
+from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy import select
 
 from app.config import get_settings
@@ -12,6 +13,7 @@ from app.db.repositories import ConversationRepository, OwnerRepository
 from app.db.session import SessionLocal
 from app.interface.service import load_menu_definition
 from app.telegram.keyboards import to_aiogram_inline_keyboard
+from app.telegram.rich_message import render_input_rich_message
 from app.telegram.rich_text import render_native_rich
 
 
@@ -83,6 +85,20 @@ class AiogramTelegramAdapter:
                 approval_id=feedback_approval_id,
             )
         rendered = render_native_rich(text) if native_rich else None
+        rich_message = render_input_rich_message(text) if native_rich else None
+        if rich_message is not None:
+            try:
+                message = await self.bot.send_rich_message(
+                    chat_id=chat_id,
+                    rich_message=rich_message,
+                    business_connection_id=business_connection_id,
+                    reply_markup=reply_markup,
+                )
+                return message.message_id
+            except TelegramBadRequest:
+                # Telegram confirmed rejection, so a plain-message fallback cannot duplicate a
+                # successfully accepted rich message. Network/timeout errors intentionally escape.
+                pass
         message = await self.bot.send_message(
             chat_id=chat_id,
             text=rendered.text if rendered is not None else text,

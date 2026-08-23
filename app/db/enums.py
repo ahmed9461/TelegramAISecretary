@@ -55,3 +55,12 @@ class FlowSessionStatus(StrEnum):
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
+
+
+class PaymentStatus(StrEnum):
+    CREATED = "CREATED"
+    PRECHECKOUT = "PRECHECKOUT"
+    PAID = "PAID"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"

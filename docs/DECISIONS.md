@@ -206,3 +206,27 @@ When local policy returns AUTO_REPLY, the response still creates and atomically 
 **Status:** Accepted
 
 Cached Business Connection state is useful for ingestion but is not sufficient authority to send. AUTO and Flow delivery read the live Telegram connection immediately before sending, require the configured owner and `can_reply`, and fail closed otherwise. Flow choice callbacks are bound to the conversation Contact, and a human takeover or stricter conversation state cancels an active flow.
+
+## ADR-035 — Compact replies are resolved transiently from conversation continuity
+**Date:** 2026-08-24
+**Status:** Accepted
+
+A short number, yes/no answer, or compact selection may be resolved against the latest outgoing question before retrieval and AI classification. The original incoming message remains unchanged in storage. The resolved form is bounded transient context and never becomes knowledge or memory automatically. A prior outgoing reply is also a deterministic signal that suppresses a repeated opening greeting.
+
+## ADR-036 — Customer menus use an explicit draft/preview/publish lifecycle
+**Date:** 2026-08-24
+**Status:** Accepted
+
+The published menu remains under scope `DEFAULT`; owner edits occur in a cloned `DRAFT` profile. Preview callbacks explain actions without executing them. Publication atomically archives the previous profile and promotes the reviewed draft, then a new draft is cloned for later changes. Old customer callbacks cannot execute an archived item. This closes partial configuration and silent publication without adding activity-specific schema.
+
+## ADR-037 — Structured replies prefer Telegram InputRichMessage with confirmed fallback only
+**Date:** 2026-08-24
+**Status:** Accepted
+
+Replies with a genuine title/list structure are rendered to native Rich Message blocks. Plain replies keep the existing text/entities path. A plain fallback may occur only after `TelegramBadRequest` confirms the rich request was rejected; timeouts, network failures and other uncertain outcomes do not trigger a second send. Raw Markdown markers are removed deterministically before rendering.
+
+## ADR-038 — Digital payment delivery requires a verified Telegram Stars receipt
+**Date:** 2026-08-24
+**Status:** Accepted
+
+Owner-configured digital payment buttons create one-time `XTR` orders and Telegram invoice links. Pre-checkout validates payload, contact, currency, amount, state and expiry. Delivery occurs only after `successful_payment`, with Telegram charge ID uniqueness and idempotent duplicate handling. Product copy, price and success message are data, not Core constants. External URL buttons remain available for legitimate off-platform/physical payment gateways, while provider-specific API/webhook integrations require a separate signed adapter and must not store credentials in menu data.

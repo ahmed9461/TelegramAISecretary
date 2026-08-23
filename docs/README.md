@@ -29,7 +29,9 @@
 19. `M8_MEMORY_INTELLIGENCE.md` — تفاصيل M8 والبوابة الحية.
 20. `M9_PRODUCTION_OPERATIONS.md` — التشغيل والمراقبة والنشر والنسخ الاحتياطي وبوابة M9.
 21. `M10_ADVANCED_AUTOMATION.md` — التدفقات والنوايا والتذكيرات وAUTO وإغلاق M10.
-22. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
+22. `V1_FINAL_ACCEPTANCE.md` — تدقيق نطاق V1 والفجوات والبوابات النهائية.
+23. `USER_MANUAL_AR.md` — كتيب المالك الشامل لإعداد السكرتير واستخدامه اليومي.
+24. `THIRD_PARTY_INSPIRATION.md` — المصادر المفتوحة التي أخذنا منها patterns فقط.
 
 ## قاعدة التحديث
 

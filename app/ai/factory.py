@@ -2,6 +2,7 @@ from app.ai.deepseek import DeepSeekAIProvider
 from app.ai.multimodal import MultimodalPipeline
 from app.ai.text import TextPipeline
 from app.config import Settings
+from app.media.pipeline import MediaPipeline
 from app.vision.gemini import GeminiVisionProvider
 
 
@@ -38,3 +39,19 @@ def build_multimodal_pipeline(settings: Settings) -> MultimodalPipeline:
         timeout_seconds=settings.ai_request_timeout_seconds,
     )
     return MultimodalPipeline(vision=vision, ai=ai)
+
+
+def build_media_pipeline(settings: Settings) -> MediaPipeline:
+    if settings.vision_provider != "gemini":
+        raise ValueError("Media pipeline currently requires VISION_PROVIDER=gemini")
+    ai = build_ai_provider(settings)
+    media = GeminiVisionProvider(
+        api_key=settings.gemini_api_key,
+        model=settings.gemini_model,
+        fallback_models=settings.gemini_fallback_model_list,
+        max_retries=settings.gemini_max_retries,
+        retry_base_seconds=settings.gemini_retry_base_seconds,
+        base_url=settings.gemini_base_url,
+        timeout_seconds=settings.ai_request_timeout_seconds,
+    )
+    return MediaPipeline(media=media, ai=ai)

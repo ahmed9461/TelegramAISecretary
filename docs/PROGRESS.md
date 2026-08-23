@@ -410,3 +410,61 @@ Goal: the repository itself must be sufficient context for a new developer/AI wi
 - أصبحت كل بوابات M10 مغلقة، بما فيها CI النهائي والدمج إلى `main`.
 - baseline المنتج الحالي هو `main` بالإصدار `0.10.0` ورأس migration `0008`.
 - لا توجد M11 نشطة؛ أي تطوير لاحق يفتح كمرحلة جديدة بنطاق ومعايير قبول مستقلة.
+
+## V1 Final Acceptance — Owner administration
+
+**Status: لوحة المالك أُغلقت محليًا وحيًا؛ بقية فجوات V1 قيد التنفيذ.**
+
+- اندمج M10 عبر PR #6 بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22` بعد CI النهائي run `32547007628`.
+- استُبدلت أقسام المحادثات/بانتظارك/الأشخاص/الأمان/الإيقاف الوهمية بشاشات owner-only فعلية.
+- أضيفت إدارة حالة المحادثة، الاستلام البشري والعودة، الرد لمرة واحدة، ملخص السياق، وإعدادات AI/Memory/Exclusion لكل Contact مع audit.
+- ملخص المحادثة يحجب الأنماط الحساسة محليًا ولا يحولها إلى ذاكرة طويلة المدى.
+- البوابة المركزة: 5 اختبارات ناجحة وRuff/compileall ناجحان.
+- البوابة الحية قرأت الشاشات الأربع وتفاصيل محادثة دون تغيير إعداد أو إرسال رد لعميل حقيقي.
+
+## V1 Final Acceptance — Conversation, media, interface, and payments
+
+**Status: مكتمل وظيفيًا؛ CI/New‑VPS/الدمج قيد التنفيذ.**
+
+### Implemented
+
+- حل سياقي مؤقت للأرقام ونعم/لا والردود القصيرة بالرجوع إلى آخر سؤال صادر، مع إبقاء الرسالة الأصلية كما هي وعدم إنشاء تعلم.
+- منع التحية الافتتاحية بعد وجود رد سابق وتنظيف Markdown الخام والعناوين والرموز البرمجية قبل التسليم.
+- Voice/Audio/Document basic handling آمن عبر Gemini ثم DeepSeek والسياسة العامة نفسها، مع redaction وسجلات metadata محدودة.
+- Native Rich Message منظم فعليًا، وplain-text fallback مرة واحدة فقط بعد `TelegramBadRequest` مؤكد.
+- دورة Menu draft/preview/edit/reorder/publish؛ المعاينة لا تنفذ الإجراء والتغيير لا يصل للعملاء قبل تأكيد النشر.
+- Custom Intent يعرض دائمًا ثلاثة إجراءات: تحسين الفهم فقط، رد ثابت بموافقة، أو متابعة بشرية، ويضيف أي Flow منشور.
+- Telegram Stars: PaymentOrder عند migration `0009`، إنشاء فاتورة XTR، تحقق pre-checkout، idempotency، وتسليم بعد successful payment فقط.
+- دليل عربي شامل للمالك يغطي التشغيل والإعداد والحدود والواجهة والدفع والتقييم والتشخيص.
+
+### Automated/local gate — 2026-08-24
+
+```text
+pytest: 130 passed, 1 known warning
+Ruff full repository gate: PASS
+compileall: PASS
+retrieval regression: 14/14 top-1
+Alembic current/head: 0009 / PASS
+isolated migration rehearsal: PASS
+post-migration backup/isolated restore: PASS
+Docker Compose config/build/non-root: PASS
+health/ready/metrics auth: 200/200/401→200
+```
+
+### Live provider/Telegram gate — 2026-08-24
+
+- Telegram/DeepSeek/Gemini preflight الحي: HTTP 200.
+- ربط النموذج الرقم `4` بسؤال عدد المجموعات دون تكرار تحية أو Markdown خام؛ بقي ضمن REQUIRE_APPROVAL.
+- تحليل مستند اصطناعي نجح دون إرسال للعميل، وNative Rich Message أُرسل حيًا ثم حُذف الاختبار المحدد.
+- أنشئ رابط Telegram Stars XTR بنجاح دون طباعته أو تنفيذه ماليًا.
+- لم تشغل عملية bot محلية ثانية؛ poller الإنتاج على New‑VPS بقي الوحيد.
+
+### GitHub CI and New‑VPS candidate gate — 2026-08-24
+
+- فُتح PR #9 عند commit `137d939e530e1af7acc2e69215d607eb5ec51f14`.
+- نجح GitHub Actions run `32670663258` على Python 3.12 و3.13؛ تضمنت مهمة 3.12 بناء صورة الإنتاج.
+- قبل النشر حُفظ backup واستعيد معزولًا عند `0008` بأعداد owners=1/conversations=2/messages=46، وحُفظت صور API/Bot القديمة وstash Dockerfile دون حذف.
+- رُحلت New‑VPS إلى `0009` ونشرت صورة `1.0.0`. health/ready والـmetrics 401/200 وproduction preflight الحي كلها PASS.
+- نجح على الخادم فهم `4` كسياق للعدد دون تحية متكررة أو Markdown، ونجح مسار المستند، وإنشاء رابط XTR غير مرسل دون معاملة مالية.
+- backup ما بعد النشر استعيد معزولًا عند `0009`: owners=1/conversations=2/messages=46/payment_orders=0، ثم حُذفت قاعدة البروفة وحدها.
+- api/bot يعملان بالمستخدم `secretary` مع restart=0، ومسح السجلات أعاد 0 أخطاء/Traceback/تعارض polling.

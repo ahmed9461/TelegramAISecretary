@@ -3,6 +3,7 @@ import asyncio
 from app.config import get_settings
 from app.observability.logging import configure_logging
 from app.schedules.runner import run_reminder_loop
+from app.telegram.admin_ui import router as admin_router
 from app.telegram.approval_edit_ui import router as approval_edit_router
 from app.telegram.automation_ui import router as automation_router
 from app.telegram.behavior_ui import router as behavior_router
@@ -31,6 +32,7 @@ async def main() -> None:
     # Specialized routers are registered before the generic brain router so current management
     # screens handle their callbacks instead of older placeholders.
     dp.include_router(approval_edit_router)
+    dp.include_router(admin_router)
     dp.include_router(feedback_router)
     dp.include_router(automation_router)
     dp.include_router(schedule_router)
@@ -48,6 +50,7 @@ async def main() -> None:
             bot,
             allowed_updates=[
                 "message",
+                "pre_checkout_query",
                 "callback_query",
                 "business_connection",
                 "business_message",

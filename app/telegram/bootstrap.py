@@ -16,7 +16,7 @@ from aiogram.types import (
 )
 from sqlalchemy import select
 
-from app.ai.factory import build_multimodal_pipeline, build_text_pipeline
+from app.ai.factory import build_media_pipeline, build_multimodal_pipeline, build_text_pipeline
 from app.approvals.service import (
     attach_owner_message,
     claim_for_send,
@@ -28,6 +28,7 @@ from app.approvals.service import (
     preview_claim,
     reject,
 )
+from app.audit.service import write_audit_log
 from app.config import get_settings
 from app.conversations.context import build_ai_context
 from app.conversations.ingest import ingest_message
@@ -520,25 +521,6 @@ async def flow_choice_callback(callback: CallbackQuery, bot: Bot) -> None:
         )
 
 
-@router.callback_query(
-    F.data.in_(
-        {
-            "a:conversations",
-            "a:pending",
-            "a:contacts",
-            "a:security",
-            "a:pause",
-        }
-    )
-)
-async def owner_callbacks(callback: CallbackQuery) -> None:
-    if not guard.is_owner(callback.from_user.id):
-        await callback.answer()
-        return
-    action = (callback.data or "").split(":", 1)[-1]
-    await callback.answer(f"{action}: القسم قيد استكمال الواجهة")
-
-
 @router.business_connection()
 async def on_business_connection(connection: BusinessConnection) -> None:
     if not _persist_business_connection(connection):
@@ -757,8 +739,14 @@ async def _route_message_to_automation(
     bot: Bot,
     connection_id: str,
     conversation_id: int,
+    trigger_message_id: int,
 ) -> bool:
     text = (message.text or message.caption or "").strip()
+    post_action = "FLOW"
+    approval_id = 0
+    fixed_response = ""
+    contact_name = "غير معروف"
+    chat_id = message.chat.id
     with SessionLocal() as session:
         conversation = session.get(Conversation, conversation_id)
         if conversation is None:
@@ -819,26 +807,129 @@ async def _route_message_to_automation(
                 owner_id=conversation.owner_id,
                 text=text,
             )
-            if matched is None or matched.action_type != "START_FLOW":
+            if matched is None or matched.action_type == "NONE":
                 return False
-            raw_flow_id = matched.action_config.get("flow_id")
-            if not isinstance(raw_flow_id, int) and not str(raw_flow_id).isdigit():
-                return False
-            try:
-                turn = start_flow(
+            contact = session.get(Contact, conversation.contact_id)
+            contact_name = contact.display_name if contact else "غير معروف"
+            if matched.action_type == "DRAFT_RESPONSE":
+                fixed_response = str(matched.action_config.get("text") or "").strip()
+                if not fixed_response:
+                    return False
+                approval = create_approval(
                     session,
                     conversation=conversation,
-                    flow_id=int(raw_flow_id),
+                    trigger_message_id=trigger_message_id,
+                    candidate_response=fixed_response,
+                    reason=format_approval_reason(
+                        source="CUSTOM_INTENT",
+                        reason_code="OWNER_REVIEW",
+                        intent=matched.name,
+                    ),
+                    context={"intent": matched.name, "custom_intent_id": matched.intent_id},
+                    ttl_hours=settings.approval_ttl_hours,
                 )
-            except ValueError:
-                logger.warning(
-                    "custom_intent_flow_unavailable intent=%s conversation=%s",
-                    matched.intent_id,
+                approval_id = approval.id
+                post_action = "DRAFT_RESPONSE"
+                turn = None
+            elif matched.action_type == "HANDOFF":
+                ApprovalRepository.invalidate_pending(
+                    session,
                     conversation.id,
+                    status="SUPERSEDED",
+                )
+                conversation.state = ConversationState.HUMAN_TAKEOVER.value
+                conversation.revision += 1
+                write_audit_log(
+                    session,
+                    owner_id=conversation.owner_id,
+                    actor="SYSTEM",
+                    action="CUSTOM_INTENT_HANDOFF",
+                    entity_type="CONVERSATION",
+                    entity_id=conversation.id,
+                    metadata={"custom_intent_id": matched.intent_id},
+                )
+                session.commit()
+                post_action = "HANDOFF"
+                turn = None
+            elif matched.action_type != "START_FLOW":
+                logger.warning(
+                    "custom_intent_action_unsupported intent=%s action=%s",
+                    matched.intent_id,
+                    matched.action_type,
                 )
                 return False
-            session.commit()
+            else:
+                raw_flow_id = matched.action_config.get("flow_id")
+                if not isinstance(raw_flow_id, int) and not str(raw_flow_id).isdigit():
+                    return False
+                try:
+                    turn = start_flow(
+                        session,
+                        conversation=conversation,
+                        flow_id=int(raw_flow_id),
+                    )
+                except ValueError:
+                    logger.warning(
+                        "custom_intent_flow_unavailable intent=%s conversation=%s",
+                        matched.intent_id,
+                        conversation.id,
+                    )
+                    return False
+                session.commit()
 
+    if post_action == "DRAFT_RESPONSE":
+        await _send_approval_card(
+            bot,
+            approval_id=approval_id,
+            text=(
+                "💬 رد ثابت مقترح لطلب معروف\n\n"
+                f"👤 {contact_name}\n"
+                f"📝 الرسالة: {text[:1000]}\n\n"
+                f"✍️ الرد المعتمد في الإعداد:\n{fixed_response}\n\n"
+                f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
+            ),
+        )
+        return True
+
+    if post_action == "HANDOFF":
+        await bot.send_message(
+            chat_id=settings.owner_telegram_id,
+            text=(
+                "👤 طلب يحتاج متابعتك المباشرة\n\n"
+                f"من: {contact_name}\n"
+                f"الرسالة: {text[:1000]}\n\n"
+                "أوقفت الردود الآلية لهذه المحادثة حتى تعيدها للسكرتير."
+            ),
+        )
+        can_send, _ = await _live_reply_permission(bot, connection_id)
+        if can_send:
+            adapter = AiogramTelegramAdapter(bot)
+            try:
+                sent_id = await adapter.send_text(
+                    business_connection_id=connection_id,
+                    chat_id=chat_id,
+                    text="وصل طلبك، وسيتابعه المسؤول مباشرة.",
+                    attach_default_menu=False,
+                )
+            except Exception:
+                logger.exception(
+                    "custom_intent_handoff_ack_uncertain conversation=%s",
+                    conversation_id,
+                )
+            else:
+                with SessionLocal() as session:
+                    conversation = session.get(Conversation, conversation_id)
+                    if conversation is not None:
+                        ConversationRepository.append_outgoing(
+                            session,
+                            conversation=conversation,
+                            telegram_message_id=sent_id,
+                            text="وصل طلبك، وسيتابعه المسؤول مباشرة.",
+                        )
+                        session.commit()
+        return True
+
+    assert turn is not None
     await _send_flow_turn(
         bot,
         connection_id=connection_id,
@@ -1240,6 +1331,206 @@ async def _process_photo_for_approval(
     await _send_approval_card(bot, approval_id=approval.id, text=card)
 
 
+def _media_descriptor(message: Message) -> tuple[str, str, str, str, str] | None:
+    if message.voice:
+        return (
+            message.voice.file_id,
+            message.voice.mime_type or "audio/ogg",
+            "VOICE",
+            "رسالة صوتية",
+            "🎙️",
+        )
+    if message.audio:
+        return (
+            message.audio.file_id,
+            message.audio.mime_type or "audio/mpeg",
+            "AUDIO",
+            "ملف صوتي",
+            "🎧",
+        )
+    if message.document:
+        return (
+            message.document.file_id,
+            message.document.mime_type or "application/octet-stream",
+            "DOCUMENT",
+            f"مستند {message.document.file_name or ''}".strip(),
+            "📄",
+        )
+    return None
+
+
+async def _process_media_for_approval(
+    *,
+    message: Message,
+    bot: Bot,
+    connection_id: str,
+    conversation_id: int,
+    trigger_message_id: int,
+) -> None:
+    descriptor = _media_descriptor(message)
+    if descriptor is None:
+        return
+    file_id, mime_type, media_kind, media_label, icon = descriptor
+    with SessionLocal() as session:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None:
+            return
+        owner_id = conversation.owner_id
+        expected_revision = conversation.revision
+        contact = session.get(Contact, conversation.contact_id)
+        contact_name = contact.display_name if contact else "غير معروف"
+        built = build_ai_context(
+            session,
+            conversation_id=conversation_id,
+            query=message.caption or media_label,
+            message_limit=settings.context_message_limit,
+            knowledge_top_k=settings.knowledge_top_k,
+        )
+        context = dict(built.payload)
+        context["contact_name"] = contact_name
+        chat_id = conversation.telegram_chat_id
+
+    if context.get("state") in _AUTOMATION_BLOCKED_STATES:
+        return
+    if not settings.multimodal_configured:
+        await bot.send_message(
+            chat_id=settings.owner_telegram_id,
+            text=(
+                f"{icon} وصل {media_label} من {contact_name}.\n\n"
+                "خدمة فهم الملفات غير مهيأة، لذلك لم يُرسل أي رد للعميل."
+            ),
+        )
+        return
+
+    adapter = AiogramTelegramAdapter(bot)
+    await adapter.send_typing(business_connection_id=connection_id, chat_id=chat_id)
+    trace_id = uuid4().hex
+    started = perf_counter()
+    operation = f"{media_kind}_RESPONSE"
+    try:
+        media_bytes = await adapter.download_file_bytes(
+            file_id=file_id,
+            max_bytes=settings.max_media_bytes,
+        )
+        result = await build_media_pipeline(settings).process_media(
+            media_bytes=media_bytes,
+            mime_type=mime_type,
+            media_kind=media_kind,
+            user_text=message.caption,
+            context=context,
+        )
+    except Exception as exc:
+        _persist_ai_telemetry(
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation=operation,
+            provider="gemini+deepseek",
+            model=f"{settings.gemini_model}+{settings.deepseek_model}",
+            status="ERROR",
+            latency_ms=round((perf_counter() - started) * 1000),
+            context=context,
+            error_code=type(exc).__name__,
+        )
+        logger.exception(
+            "conversation_media_failed kind=%s chat=%s message=%s",
+            media_kind,
+            chat_id,
+            message.message_id,
+            extra={"trace_id": trace_id, "operation": operation},
+        )
+        await bot.send_message(
+            chat_id=settings.owner_telegram_id,
+            text=(
+                f"⚠️ تعذر فهم {media_label} من {contact_name}.\n"
+                "قد يكون النوع غير مدعوم أو الملف أكبر من الحد الآمن. "
+                "لم يتم إرسال أي رد للعميل."
+            ),
+        )
+        return
+
+    if _conversation_is_current(conversation_id, expected_revision) is None:
+        _persist_ai_telemetry(
+            owner_id=owner_id,
+            conversation_id=conversation_id,
+            trigger_message_id=trigger_message_id,
+            trace_id=trace_id,
+            operation=operation,
+            provider="gemini+deepseek",
+            model=f"{settings.gemini_model}+{settings.deepseek_model}",
+            status="DISCARDED",
+            latency_ms=round((perf_counter() - started) * 1000),
+            context=context,
+            result=result,
+        )
+        return
+
+    _persist_ai_telemetry(
+        owner_id=owner_id,
+        conversation_id=conversation_id,
+        trigger_message_id=trigger_message_id,
+        trace_id=trace_id,
+        operation=operation,
+        provider="gemini+deepseek",
+        model=f"{settings.gemini_model}+{settings.deepseek_model}",
+        status="SUCCESS",
+        latency_ms=round((perf_counter() - started) * 1000),
+        context=context,
+        result=result,
+    )
+
+    observation = result.observation
+    if (
+        result.decision.action in {DecisionAction.SILENT, DecisionAction.ESCALATE}
+        or not result.candidate_reply
+    ):
+        await bot.send_message(
+            chat_id=settings.owner_telegram_id,
+            text=(
+                f"{icon} {media_label} يحتاج تدخلك\n\n"
+                f"من: {contact_name}\n"
+                f"الملخص: {observation.summary[:1000]}\n"
+                f"سبب التحويل: {decision_reason_text(result.decision.reason_code)}\n\n"
+                "لم يتم إرسال رد للعميل."
+            ),
+        )
+        return
+
+    with SessionLocal() as session:
+        conversation = session.get(Conversation, conversation_id)
+        if conversation is None or conversation.revision != expected_revision:
+            return
+        approval = create_approval(
+            session,
+            conversation=conversation,
+            trigger_message_id=trigger_message_id,
+            candidate_response=result.candidate_reply,
+            reason=format_approval_reason(
+                source=media_kind,
+                reason_code=result.decision.reason_code,
+                intent=result.decision.intent,
+            ),
+            context=_approval_context(intent=result.decision.intent, context=context),
+            ttl_hours=settings.approval_ttl_hours,
+        )
+
+    extracted = (observation.transcript or observation.extracted_text).strip()
+    preview = extracted[:700] + ("…" if len(extracted) > 700 else "")
+    card = (
+        f"{icon} رد مقترح على {media_label}\n\n"
+        f"👤 {contact_name}\n"
+        f"🔎 الملخص: {observation.summary[:1000]}\n"
+    )
+    if preview:
+        card += f"📝 المحتوى المقروء: {preview}\n"
+    card += (
+        f"\n✍️ رد السكرتير المقترح:\n{result.candidate_reply}\n\n"
+        f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
+    )
+    await _send_approval_card(bot, approval_id=approval.id, text=card[:4000])
+
+
 @router.business_message()
 async def on_business_message(message: Message, bot: Bot) -> None:
     connection_id = message.business_connection_id
@@ -1310,6 +1601,7 @@ async def on_business_message(message: Message, bot: Bot) -> None:
         bot=bot,
         connection_id=connection_id,
         conversation_id=result.conversation.id,
+        trigger_message_id=result.message.id,
     ):
         debouncer.cancel(key)
         return
@@ -1318,6 +1610,18 @@ async def on_business_message(message: Message, bot: Bot) -> None:
             key,
             delay_seconds=settings.message_debounce_seconds,
             factory=lambda: _process_photo_for_approval(
+                message=message,
+                bot=bot,
+                connection_id=connection_id,
+                conversation_id=result.conversation.id,
+                trigger_message_id=result.message.id,
+            ),
+        )
+    elif message.voice or message.audio or message.document:
+        debouncer.schedule(
+            key,
+            delay_seconds=settings.message_debounce_seconds,
+            factory=lambda: _process_media_for_approval(
                 message=message,
                 bot=bot,
                 connection_id=connection_id,
@@ -1410,7 +1714,12 @@ async def _shutdown() -> None:
 
 
 def build_dispatcher() -> Dispatcher:
+    from app.telegram.payment_ui import router as payment_router
+
     dp = Dispatcher()
+    # Payment confirmation must run before the generic Business-message ingester so a receipt is
+    # never interpreted as a customer request.
+    dp.include_router(payment_router)
     dp.include_router(router)
     dp.shutdown.register(_shutdown)
     return dp

@@ -33,6 +33,7 @@ class AutomationStates(StatesGroup):
     intent_name = State()
     intent_examples = State()
     intent_threshold = State()
+    intent_response = State()
 
 
 def _is_owner(user_id: int | None) -> bool:
@@ -61,6 +62,39 @@ def _status_label(value: str) -> str:
         FlowStatus.PUBLISHED.value: "منشور",
         FlowStatus.ARCHIVED.value: "مؤرشف",
     }.get(value, "غير معروف")
+
+
+def intent_action_keyboard(flows: list[Flow]) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text="🧠 تحسين فهم السكرتير فقط",
+                callback_data="automation:intent:link:0",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="✍️ اقتراح رد ثابت لموافقتي",
+                callback_data="automation:intent:link:r",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="👤 تحويل الطلب لمتابعتي",
+                callback_data="automation:intent:link:h",
+            )
+        ],
+    ]
+    rows.extend(
+        [
+            InlineKeyboardButton(
+                text=f"بدء: {flow.name[:48]}",
+                callback_data=f"automation:intent:link:{flow.id}",
+            )
+        ]
+        for flow in flows[:20]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _home_text(flows: list[Flow], intents: list[CustomIntent]) -> str:
@@ -597,48 +631,24 @@ async def intent_threshold(message: Message, state: FSMContext) -> None:
                 )
             )
         )
-    rows = [
-        [InlineKeyboardButton(text="توجيه فقط دون إجراء", callback_data="automation:intent:link:0")]
-    ]
-    rows.extend(
-        [
-            InlineKeyboardButton(
-                text=f"بدء: {flow.name[:48]}",
-                callback_data=f"automation:intent:link:{flow.id}",
-            )
-        ]
-        for flow in flows[:20]
-    )
     await message.answer(
-        "اختر ما يحدث عند التعرف على الطلب. التوجيه وحده يساعد فهم الرد ولا يرسل شيئًا تلقائيًا.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+        "اختر ما يحدث عند التعرف على الطلب:\n\n"
+        "• تحسين الفهم: يستخدم النية كسياق فقط.\n"
+        "• اقتراح رد: ينشئ ردًا ثابتًا وتراجعه قبل الإرسال.\n"
+        "• تحويل لمتابعتك: يوقف الرد الآلي لهذه المحادثة وينبهك.\n"
+        "• بدء إجراء: يظهر أدناه عند وجود إجراء منشور.",
+        reply_markup=intent_action_keyboard(flows),
     )
 
 
-@router.callback_query(F.data.startswith("automation:intent:link:"))
-async def link_intent(callback: CallbackQuery, state: FSMContext) -> None:
-    if not _is_owner(callback.from_user.id):
-        await safe_callback_answer(callback)
-        return
-    raw_flow_id = (callback.data or "").rsplit(":", 1)[-1]
-    if not raw_flow_id.isdigit():
-        await safe_callback_answer(callback, "اختيار غير صالح.", show_alert=True)
-        return
-    data = await state.get_data()
-    if not data.get("intent_name") or not data.get("intent_examples"):
-        await safe_callback_answer(callback, "انتهت جلسة الإعداد. ابدأ من جديد.", show_alert=True)
-        return
-    flow_id = int(raw_flow_id)
+def _store_custom_intent(*, data: dict, action_type: str, action_config: dict) -> str:
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        action_type = "NONE"
-        action_config: dict = {}
-        if flow_id:
-            flow = _owned_flow(session, owner_id=owner.id, flow_id=flow_id)
+        if action_type == "START_FLOW":
+            raw_flow_id = action_config.get("flow_id")
+            flow = _owned_flow(session, owner_id=owner.id, flow_id=int(raw_flow_id or 0))
             if flow is None or flow.status != FlowStatus.PUBLISHED.value:
-                await safe_callback_answer(callback, "الإجراء غير متاح.", show_alert=True)
-                return
-            action_type = "START_FLOW"
+                raise ValueError("الإجراء غير متاح.")
             action_config = {"flow_id": flow.id}
         edit_id = data.get("intent_edit_id")
         row = (
@@ -652,8 +662,7 @@ async def link_intent(callback: CallbackQuery, state: FSMContext) -> None:
             else None
         )
         if edit_id and row is None:
-            await safe_callback_answer(callback, "لم أجد الطلب المراد تعديله.", show_alert=True)
-            return
+            raise ValueError("لم أجد الطلب المراد تعديله.")
         if row is None:
             row = CustomIntent(owner_id=owner.id)
             session.add(row)
@@ -674,13 +683,78 @@ async def link_intent(callback: CallbackQuery, state: FSMContext) -> None:
             entity_id=row.id,
         )
         session.commit()
-        name = row.name
+        return row.name
+
+
+@router.callback_query(F.data.startswith("automation:intent:link:"))
+async def link_intent(callback: CallbackQuery, state: FSMContext) -> None:
+    if not _is_owner(callback.from_user.id):
+        await safe_callback_answer(callback)
+        return
+    choice = (callback.data or "").rsplit(":", 1)[-1]
+    if choice not in {"0", "r", "h"} and not choice.isdigit():
+        await safe_callback_answer(callback, "اختيار غير صالح.", show_alert=True)
+        return
+    data = await state.get_data()
+    if not data.get("intent_name") or not data.get("intent_examples"):
+        await safe_callback_answer(callback, "انتهت جلسة الإعداد. ابدأ من جديد.", show_alert=True)
+        return
+    if choice == "r":
+        await state.set_state(AutomationStates.intent_response)
+        if callback.message:
+            await callback.message.answer(
+                "اكتب الرد الثابت المقترح. عند التطابق سيصل إليك للمراجعة، ولن يُرسل تلقائيًا."
+            )
+        await safe_callback_answer(callback)
+        return
+    action_type = "HANDOFF" if choice == "h" else "NONE"
+    action_config: dict = {}
+    if choice.isdigit() and int(choice):
+        action_type = "START_FLOW"
+        action_config = {"flow_id": int(choice)}
+    try:
+        name = _store_custom_intent(
+            data=data,
+            action_type=action_type,
+            action_config=action_config,
+        )
+    except ValueError as exc:
+        await safe_callback_answer(callback, str(exc), show_alert=True)
+        return
     await state.clear()
     await safe_callback_answer(callback, "تم حفظ الطلب المخصص")
     if callback.message:
         await callback.message.answer(
             f"✅ أصبح «{name}» فعالًا بالعبارات ودرجة التطابق التي اعتمدتها."
         )
+
+
+@router.message(AutomationStates.intent_response)
+async def intent_response(message: Message, state: FSMContext) -> None:
+    if not _is_owner(message.from_user.id if message.from_user else None):
+        return
+    response = (message.text or "").strip()
+    if not response:
+        await message.answer("اكتب ردًا واضحًا ليصل إليك للمراجعة عند التطابق.")
+        return
+    data = await state.get_data()
+    if not data.get("intent_name") or not data.get("intent_examples"):
+        await state.clear()
+        await message.answer("انتهت جلسة الإعداد. ابدأ إنشاء الطلب المخصص من جديد.")
+        return
+    try:
+        name = _store_custom_intent(
+            data=data,
+            action_type="DRAFT_RESPONSE",
+            action_config={"text": response[:4000]},
+        )
+    except ValueError as exc:
+        await message.answer(str(exc))
+        return
+    await state.clear()
+    await message.answer(
+        f"✅ أصبح «{name}» فعالًا. عند التطابق سيصلك الرد الثابت للموافقة قبل إرساله."
+    )
 
 
 def _intent_id(callback: CallbackQuery) -> int | None:

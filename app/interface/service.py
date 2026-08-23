@@ -34,6 +34,80 @@ def get_or_create_default_menu_profile(session: Session, *, owner_id: int) -> Me
     return profile
 
 
+def _profile_items(session: Session, profile_id: int) -> list[MenuItem]:
+    return list(
+        session.scalars(
+            select(MenuItem)
+            .where(MenuItem.menu_profile_id == profile_id, MenuItem.parent_item_id.is_(None))
+            .order_by(MenuItem.row_index, MenuItem.sort_order, MenuItem.id)
+        )
+    )
+
+
+def get_or_create_draft_menu_profile(session: Session, *, owner_id: int) -> MenuProfile:
+    draft = session.scalar(
+        select(MenuProfile)
+        .where(MenuProfile.owner_id == owner_id, MenuProfile.scope == "DRAFT")
+        .order_by(MenuProfile.id.desc())
+    )
+    if draft is not None:
+        return draft
+
+    published = get_or_create_default_menu_profile(session, owner_id=owner_id)
+    draft = MenuProfile(
+        owner_id=owner_id,
+        name=f"{published.name} — مسودة",
+        mode=published.mode,
+        scope="DRAFT",
+        enabled=True,
+        welcome_message=published.welcome_message,
+    )
+    session.add(draft)
+    session.flush()
+    for row in _profile_items(session, published.id):
+        session.add(
+            MenuItem(
+                menu_profile_id=draft.id,
+                parent_item_id=None,
+                label=row.label,
+                emoji=row.emoji,
+                action_type=row.action_type,
+                action_config_json=dict(row.action_config_json or {}),
+                row_index=row.row_index,
+                sort_order=row.sort_order,
+                visibility_rules_json=dict(row.visibility_rules_json or {}),
+                enabled=row.enabled,
+            )
+        )
+    session.flush()
+    return draft
+
+
+def publish_menu_draft(session: Session, *, owner_id: int) -> MenuProfile:
+    """Atomically promote the reviewed draft and immediately create a fresh editable copy."""
+
+    draft = session.scalar(
+        select(MenuProfile)
+        .where(MenuProfile.owner_id == owner_id, MenuProfile.scope == "DRAFT")
+        .order_by(MenuProfile.id.desc())
+    )
+    if draft is None:
+        raise ValueError("menu_draft_not_found")
+    published = session.scalar(
+        select(MenuProfile)
+        .where(MenuProfile.owner_id == owner_id, MenuProfile.scope == "DEFAULT")
+        .order_by(MenuProfile.id.asc())
+    )
+    if published is not None:
+        published.scope = f"ARCHIVED_{published.id}"
+        published.enabled = False
+    draft.scope = "DEFAULT"
+    draft.enabled = True
+    draft.name = draft.name.removesuffix(" — مسودة")
+    session.flush()
+    return draft
+
+
 def menu_item_matches_context(
     visibility_rules: Mapping | None,
     context: Mapping | None,
@@ -139,6 +213,7 @@ def get_owned_menu_item(
     *,
     owner_id: int,
     item_id: int,
+    required_scope: str | None = None,
 ) -> tuple[MenuProfile, MenuItem] | None:
     row = session.get(MenuItem, item_id)
     if row is None:
@@ -146,16 +221,11 @@ def get_owned_menu_item(
     profile = session.get(MenuProfile, row.menu_profile_id)
     if profile is None or profile.owner_id != owner_id or not profile.enabled:
         return None
+    if required_scope is not None and profile.scope != required_scope:
+        return None
     return profile, row
 
 
 def list_menu_items(session: Session, *, owner_id: int) -> tuple[MenuProfile, list[MenuItem]]:
-    profile = get_or_create_default_menu_profile(session, owner_id=owner_id)
-    rows = list(
-        session.scalars(
-            select(MenuItem)
-            .where(MenuItem.menu_profile_id == profile.id, MenuItem.parent_item_id.is_(None))
-            .order_by(MenuItem.row_index, MenuItem.sort_order, MenuItem.id)
-        )
-    )
-    return profile, rows
+    profile = get_or_create_draft_menu_profile(session, owner_id=owner_id)
+    return profile, _profile_items(session, profile.id)
