@@ -458,3 +458,13 @@ health/ready/metrics auth: 200/200/401→200
 - تحليل مستند اصطناعي نجح دون إرسال للعميل، وNative Rich Message أُرسل حيًا ثم حُذف الاختبار المحدد.
 - أنشئ رابط Telegram Stars XTR بنجاح دون طباعته أو تنفيذه ماليًا.
 - لم تشغل عملية bot محلية ثانية؛ poller الإنتاج على New‑VPS بقي الوحيد.
+
+### GitHub CI and New‑VPS candidate gate — 2026-08-24
+
+- فُتح PR #9 عند commit `137d939e530e1af7acc2e69215d607eb5ec51f14`.
+- نجح GitHub Actions run `32670663258` على Python 3.12 و3.13؛ تضمنت مهمة 3.12 بناء صورة الإنتاج.
+- قبل النشر حُفظ backup واستعيد معزولًا عند `0008` بأعداد owners=1/conversations=2/messages=46، وحُفظت صور API/Bot القديمة وstash Dockerfile دون حذف.
+- رُحلت New‑VPS إلى `0009` ونشرت صورة `1.0.0`. health/ready والـmetrics 401/200 وproduction preflight الحي كلها PASS.
+- نجح على الخادم فهم `4` كسياق للعدد دون تحية متكررة أو Markdown، ونجح مسار المستند، وإنشاء رابط XTR غير مرسل دون معاملة مالية.
+- backup ما بعد النشر استعيد معزولًا عند `0009`: owners=1/conversations=2/messages=46/payment_orders=0، ثم حُذفت قاعدة البروفة وحدها.
+- api/bot يعملان بالمستخدم `secretary` مع restart=0، ومسح السجلات أعاد 0 أخطاء/Traceback/تعارض polling.

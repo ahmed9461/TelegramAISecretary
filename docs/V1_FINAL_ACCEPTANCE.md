@@ -2,7 +2,7 @@
 
 ## الحالة
 
-مرشح الإصدار `1.0.0` مكتمل وظيفيًا على `codex/final-v1-acceptance`. اجتاز البوابات المحلية وقاعدة البيانات وDocker ومزودي الخدمة الحيين. يبقى CI والنشر الآمن على New‑VPS ثم الدمج إلى `main` قبل إعلان الإغلاق النهائي.
+مرشح الإصدار `1.0.0` مكتمل وظيفيًا على `codex/final-v1-acceptance`. اجتاز البوابات المحلية وقاعدة البيانات وDocker وGitHub Actions والنشر الحي على New‑VPS. بقي دمج PR #9 إلى `main` وتثبيت الخادم على SHA الدمج قبل إعلان الإغلاق النهائي.
 
 ## ما أُغلق
 
@@ -58,7 +58,23 @@ Telegram API / DeepSeek / Gemini live probes: HTTP 200
 
 ## البوابة النهائية المتبقية
 
-- [ ] GitHub Actions ناجح على Python 3.12 و3.13.
-- [ ] backup جديد على New‑VPS قبل migration مع حفظ rollback.
-- [ ] نشر المرشح على New‑VPS ونجاح `production` preflight، health/readiness/metrics، logs، ورأس `0009`.
+- [x] GitHub Actions run `32670663258` ناجح على Python 3.12 و3.13، مع build للصورة في 3.12.
+- [x] backup جديد على New‑VPS قبل migration مع حفظ صور rollback وstash لملف Docker السابق.
+- [x] نشر المرشح على New‑VPS ونجاح `production` preflight، health/readiness/metrics، logs، ورأس `0009`.
 - [ ] دمج PR إلى `main` بعد البوابة الحية فقط، ثم تثبيت New‑VPS على SHA الدمج.
+
+## بوابة New‑VPS — 2026-08-24
+
+```text
+pre-migration backup + isolated restore: 0008, owners=1, conversations=2, messages=46
+migration: 0008 → 0009
+production preflight: PASS; Telegram/DeepSeek/Gemini HTTP 200
+/health: 200, version 1.0.0, environment production
+/ready: 200, current/expected revision 0009
+/metrics: 401 without token, 200 with token
+api/bot runtime user: secretary; restart count: 0
+post-migration backup + isolated restore: 0009, owners=1, conversations=2, messages=46, payment_orders=0
+error/critical/traceback/polling-conflict log scan: 0
+```
+
+حُفظت صور الحاويات السابقة بعلامة rollback، وحُفظ تعديل Dockerfile السابق في stash؛ لم تحذف النسخ القديمة. اختبار الدفع أنشأ رابط XTR غير مرسل ولم ينفذ معاملة مالية، واختبارات الذكاء والوسائط لم ترسل ردًا لعميل.

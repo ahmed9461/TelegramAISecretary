@@ -8,7 +8,7 @@
 
 ثم افحص الكود والمigrations الفعلية قبل اقتراح schema أو إعادة هيكلة. لا تفترض أن وصفًا قديمًا في محادثة خارج Git أحدث من المستودع.
 
-الحالة المسجلة في 2026-08-24: **M10 مدمجة في `main` عبر PR #6** بالـSHA `41deb45feaa763ab51b6df063713c8fcb18f2a22`، وتبعتها إصلاحات تشغيل الإنتاج حتى `aa7cd4f`. مرشح `V1 Final Acceptance` على `codex/final-v1-acceptance` بالإصدار `1.0.0` ورأس migration `0009` مكتمل وظيفيًا: أغلقت لوحة المالك وmedia/Rich/Menu والسلوك الحواري وCustom Intent والدفع. اجتازت بوابات local/DB/Docker/providers، وبقي CI والنشر النهائي على New‑VPS ثم الدمج.
+الحالة المسجلة في 2026-08-24: مرشح `V1 Final Acceptance` على `codex/final-v1-acceptance` بالإصدار `1.0.0` ورأس migration `0009` مكتمل وظيفيًا. اجتاز local/DB/Docker وGitHub Actions run `32670663258` والنشر الحي على New‑VPS مع backup/restore/preflight. بقي دمج PR #9 وتثبيت الخادم على SHA الدمج فقط.
 
 تحقق دائمًا من Git/Alembic عند استلام المشروع لأن الحالة قد تتغير بعد هذا السجل.
 

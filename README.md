@@ -4,7 +4,7 @@
 
 ## الحالة الحالية
 
-**مرشح V1 مكتمل وظيفيًا** على `codex/final-v1-acceptance`. الإصدار المرشح هو **1.0.0** ورأس PostgreSQL هو **0009**. لم يدمج إلى `main` بعد؛ ينتظر بوابة CI والنشر النهائي على New‑VPS.
+**مرشح V1 مكتمل وظيفيًا** على `codex/final-v1-acceptance`. الإصدار المرشح هو **1.0.0** ورأس PostgreSQL هو **0009**. نجح CI والنشر الحي على New‑VPS؛ بقي دمج PR #9 وتثبيت SHA الدمج.
 
 نجحت البوابات المحلية والحية لمحادثة السياق والوسائط وNative Rich Message وTelegram Stars، مع PostgreSQL/Docker ومزودي Telegram وDeepSeek وGemini. يبقى `main` على baseline M10 حتى نجاح بوابة الإنتاج، تنفيذًا لقاعدة عدم الدمج قبل الاختبار الحي النهائي.
 
@@ -21,7 +21,8 @@ PostgreSQL head: 0009
 isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS
-health/ready/metrics auth: PASS
+GitHub Actions run 32670663258 (Python 3.12/3.13): PASS
+New-VPS production health/ready/metrics/backup-restore: PASS
 Telegram/DeepSeek/Gemini live probes: PASS
 ```
 
