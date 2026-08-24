@@ -225,6 +225,7 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] live provider classifier eval: `12/12` بعد baseline `0/12`.
 - [x] M7 retrieval regression: `14/14`.
 - [x] PostgreSQL migration rehearsal: `upgrade → downgrade base → upgrade` عند `0010`.
-- [ ] Docker/ready/preflight والـbackup/restore بعد migration.
-- [ ] GitHub Actions Python 3.12/3.13.
-- [ ] Telegram Business UI scenarios باستخدام Contact اختبار فقط.
+- [x] Docker/ready/preflight والـbackup/restore بعد migration: `1.1.0/0010` non-root، health/ready وmetrics 401→200، واستعادة معزولة قبل/بعد الترحيل.
+- [x] GitHub Actions Python 3.12/3.13: runs `32762296478` و`32768416850` ناجحان.
+- [x] Telegram Business UI scenarios باستخدام Contact اختبار فقط: AUTO والاجتماعي وpre-sales والحساس وAPPROVAL والسياق وإعادة اختبار افتتاحية الرد كلها PASS.
+- [x] إصلاح regression عام لمنقّي الافتتاحية يمنع ترك `بك،` ويحافظ على الكلمات ذات البادئة المشابهة، مع اختبار آلي وحي.

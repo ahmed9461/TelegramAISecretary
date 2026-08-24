@@ -4,7 +4,7 @@
 
 ## الحالة المرجعية الحالية
 
-الخطة الأساسية M0–M10 وV1 مكتملة ومندمجة في `main` عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`، والإصدار المنشور المرجعي `1.0.0` ورأس migration `0009`. نطاق **Smart Secretary Autonomy & Context** الجاري يجهز المرشح `1.1.0/0010` بتمييز inherited/explicit state وintent/risk taxonomy واستمرارية واسترجاع أفضل؛ لا يعد منشورًا أو مقبولًا حيًا حتى يوثق تقرير الاختبار وCI ذلك. لا توجد M11 عامة مفتوحة؛ هذا نطاق جودة مستقل محدد بملف `CODEX_SMART_SECRETARY_AUTONOMY_AND_CONTEXT_PROMPT.md`.
+الخطة الأساسية M0–M10 وV1 مكتملة ومندمجة في `main` عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`، والمرجع المدمج `1.0.0/0009`. نطاق **Smart Secretary Autonomy & Context** نفذ المرشح `1.1.0/0010` بتمييز inherited/explicit state وintent/risk taxonomy واستمرارية واسترجاع أفضل؛ اجتاز الاختبارات وCI وبوابة Telegram Business الحية ويعمل على New‑VPS عند كود `4773accf0e508906a0d015cfb2467f6864f0794a`، ولم يدمج بعد في `main`. لا توجد M11 عامة مفتوحة؛ هذا نطاق جودة مستقل محدد بملف `CODEX_SMART_SECRETARY_AUTONOMY_AND_CONTEXT_PROMPT.md`.
 
 ## القراءة بالترتيب
 

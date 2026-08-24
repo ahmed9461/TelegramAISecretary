@@ -4,9 +4,9 @@
 
 ## الحالة الحالية
 
-**V1 المنشورة** مدمجة في `main` عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2` عند **1.0.0/0009**. فرع Smart Secretary الحالي يجهز المرشح **1.1.0/0010** لتحسين AUTO والسياق والتحويل؛ لا يصبح إصدارًا منشورًا حتى نجاح CI وبوابة Telegram Business الحية وتوثيقهما.
+مرجع **V1 في `main`** مدمج عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2` عند **1.0.0/0009**. مرشح Smart Secretary **1.1.0/0010** اجتاز CI وبوابة Telegram Business الحية ويعمل على New‑VPS عند كود `4773accf0e508906a0d015cfb2467f6864f0794a`؛ يبقى على فرعه حتى إجراء دمج مستقل.
 
-نجحت البوابات المحلية والحية لمحادثة السياق والوسائط وNative Rich Message وTelegram Stars، مع PostgreSQL/Docker ومزودي Telegram وDeepSeek وGemini. يبقى `main` على baseline M10 حتى نجاح بوابة الإنتاج، تنفيذًا لقاعدة عدم الدمج قبل الاختبار الحي النهائي.
+نجحت البوابات المحلية والحية لمحادثة السياق والوسائط وNative Rich Message وTelegram Stars، مع PostgreSQL/Docker ومزودي Telegram وDeepSeek وGemini. كما نجحت سيناريوهات AUTO والاجتماعي وpre-sales والحساس وAPPROVAL والسياق وإعادة اختبار افتتاحية الرد بعد الإصلاح. يبقى `main` على مرجع V1 إلى أن ينفذ الدمج صراحة.
 
 الخطة الأساسية M0–M10 مغلقة، وV1 يغلق فجوات القبول النهائية دون فتح M11 أو V2 تلقائيًا. دليل الاستخدام المفصل للمالك في `docs/USER_MANUAL_AR.md`.
 
@@ -17,14 +17,18 @@ retrieval evaluation: 14/14 top-1
 Ruff full gate: PASS
 compileall: PASS
 pytest: 130 passed, 1 warning
+Smart Secretary pytest: 135 passed, 1 known warning
+Smart Secretary eval: 65/65
 PostgreSQL head: 0010
 isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS
 GitHub Actions run 32670663258 (Python 3.12/3.13): PASS
 GitHub Actions documentation run 32671236353: PASS
+Smart Secretary CI runs 32762296478 and 32768416850: PASS
 New-VPS production health/ready/metrics/backup-restore: PASS
 Telegram/DeepSeek/Gemini live probes: PASS
+Telegram Business Smart Secretary scenarios: PASS
 ```
 
 ## ما يعمل الآن

@@ -472,7 +472,7 @@ health/ready/metrics auth: 200/200/401→200
 
 ## Smart Secretary Autonomy & Context — 2026-08-24
 
-**Status: مرشح 1.1.0 قيد بوابة النشر والاختبار الحي.**
+**Status: مرشح 1.1.0 مقبول ومنشور على New‑VPS عند كود `4773acc`، وبانتظار إجراء دمج مستقل إلى `main`.**
 
 ### Implemented
 
@@ -485,7 +485,7 @@ health/ready/metrics auth: 200/200/401→200
 - handoff/review summary خاص بالحالة، وbounded AiRun decision context دون نصوص محادثة أو prompts.
 - eval dataset مستقلة تشمل لهجات عربية وإنجليزية، ambiguous/negative/sensitive controls.
 
-### Measured gates so far
+### Final measured gates
 
 ```text
 baseline offline eval: 30/53
@@ -496,6 +496,12 @@ pytest: 135 passed, 1 known warning
 M7 retrieval regression: 14/14
 Ruff full / compileall: PASS
 isolated PostgreSQL migration rehearsal: PASS at 0010
+local Docker build/health/ready/non-root: PASS
+GitHub Actions runs 32762296478 and 32768416850: PASS
+New-VPS 1.1.0/0010 health/ready/metrics/preflight: PASS
+pre/post migration backup isolated restore: PASS
+Telegram Business UI scenarios 1–7: PASS
+post-fix live copy regression: PASS
 ```
 
-لا تسجل Telegram UI أو CI أو New‑VPS كـPASS حتى تنفذ وتضاف أدلتها إلى `SMART_SECRETARY_LIVE_TEST_REPORT.md`.
+ظهر في أول pre-sales live run عيب نحوي عام: حذف المنقّي «أهلًا» وترك «بك،». أصلح commit `4773acc` المطابقة لتتعامل مع الحركات و`بك/بكم` وحدود الكلمات، ثم نجحت اختبارات الضبط وCI وإعادة الاختبار الحي. التفاصيل والأدلة المربوطة بـAiRun في `SMART_SECRETARY_LIVE_TEST_REPORT.md`.

@@ -4,8 +4,8 @@
 
 ## الحالة الحالية
 
-- الإصدار المنشور الحالي: **V1 `1.0.0/0009`**. نطاق Smart Secretary Autonomy & Context يجهز المرشح `1.1.0/0010` على فرع مستقل، ولا يعد منشورًا حتى نجاح CI وبوابة Telegram Business الحية.
-- V1 اندمجت في `main` عبر PR #9؛ merge SHA: `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`، وNew‑VPS مثبت عليه.
+- مرجع `main` الحالي هو **V1 `1.0.0/0009`** عبر PR #9 وmerge SHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`.
+- New‑VPS يشغل مرشح Smart Secretary المقبول **`1.1.0/0010`** عند كود `4773accf0e508906a0d015cfb2467f6864f0794a` على فرع مستقل؛ اجتاز CI وبوابة Telegram Business الحية ولم يدمج بعد في `main`.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
 - M8 اندمج في `main` عبر PR #4؛ merge SHA: `00cbf89841444c322af18fcc8b143fec83a17596`.
@@ -181,7 +181,11 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - migration `0010` تضيف `conversations.state_is_explicit` و`ai_runs.decision_context_json`؛ backfill يحافظ على الحالات المشددة ويستخدم audit لإثبات overrides القديمة.
 - الاسترجاع بقي PostgreSQL-first مع lifecycle reranking عام، والاستمرارية تربط الرد القصير بالـturn المجاور فقط مع bounded conversation focus.
 - أسباب التحويل أصبحت حسب intent والقرار، وتخزن review summary آمنة في approval metadata دون chain-of-thought.
-- بوابة offline بعد التنفيذ: `53/53`، وتصنيف provider الحي `12/12`، وM7 retrieval `14/14`، وpytest `135 passed` مع التحذير المعروف، وRuff/compileall نجحت. Migration rehearsal المعزولة وصلت `0010`. نتائج Docker/CI/Telegram الحية توثق عند اكتمالها ولا تستنتج مسبقًا.
+- بوابة offline بعد التنفيذ: `53/53`، وتصنيف provider الحي `12/12`، والإجمالي `65/65`، وM7 retrieval `14/14`، وpytest `135 passed` مع التحذير المعروف، وRuff/compileall نجحت.
+- Migration rehearsal المعزولة وصلت `0010`. نجحت استعادة backup الإنتاج قبل الترحيل عند `0009` وبعده عند `0010` بالأعداد 1 owner/7 conversations/83 messages، مع الاحتفاظ بصور rollback.
+- نجح Docker المحلي وNew‑VPS على `1.1.0/0010`: health/ready، metrics 401/200، non-root، production preflight وTelegram/DeepSeek/Gemini HTTP 200. نجح GitHub Actions في runs `32762296478` و`32768416850`.
+- نفذت من Telegram Web الفعلية سيناريوهات AUTO grounded والاجتماعي وpre-sales والحساس وAPPROVAL والسياق متعدد الأدوار. بقي الوضع العام AUTO والحالة موروثة، ولا توجد موافقات معلقة.
+- كشف الاختبار الحي حذفًا ناقصًا لتحية «أهلًا بك» كان يترك `بك،`. أصلح `4773acc` معالجة افتتاحيات المخرجات عمومًا مع الحركات والجمع وحدود الكلمات، ثم نجحت الوحدة وCI وإعادة الاختبار الحي.
 
 ## قواعد الاستمرارية
 
