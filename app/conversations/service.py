@@ -9,6 +9,7 @@ class ConversationContext:
     global_mode: GlobalMode
     contact_excluded: bool = False
     ai_allowed: bool = True
+    state_is_explicit: bool = False
 
 
 def effective_state(ctx: ConversationContext) -> ConversationState:
@@ -29,4 +30,6 @@ def effective_state(ctx: ConversationContext) -> ConversationState:
         return ConversationState.OBSERVE_ONLY
     if ctx.global_mode == GlobalMode.APPROVAL:
         return ConversationState.AI_APPROVAL
+    if ctx.state_is_explicit:
+        return ctx.state
     return ConversationState.AI_AUTO

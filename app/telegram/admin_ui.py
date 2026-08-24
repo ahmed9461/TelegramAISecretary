@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import select
 
 from app.admin.service import (
+    clear_conversation_state_override,
     get_owned_contact,
     get_owned_conversation,
     list_owner_contacts,
@@ -121,9 +122,7 @@ async def conversations_home(callback: CallbackQuery, state: FSMContext) -> None
         keyboard.append(page)
     keyboard.append(_back_main())
     text = (
-        "💬 المحادثات\n\n"
-        f"العدد: {total}\n"
-        "اختر محادثة لعرض آخر السياق أو التدخل أو إعادة السكرتير."
+        f"💬 المحادثات\n\nالعدد: {total}\nاختر محادثة لعرض آخر السياق أو التدخل أو إعادة السكرتير."
         if total
         else "💬 المحادثات\n\nلا توجد محادثات مسجلة حتى الآن."
     )
@@ -152,17 +151,17 @@ def _conversation_keyboard(conversation: Conversation, contact: Contact) -> Inli
                 text="👤 أتولى المحادثة",
                 callback_data=f"admin:state:{cid}:HUMAN_TAKEOVER",
             ),
-            InlineKeyboardButton(
-                text="👁 مراقبة", callback_data=f"admin:state:{cid}:OBSERVE_ONLY"
-            ),
+            InlineKeyboardButton(text="👁 مراقبة", callback_data=f"admin:state:{cid}:OBSERVE_ONLY"),
         ],
         [
             InlineKeyboardButton(text="⏸ إيقاف", callback_data=f"admin:state:{cid}:PAUSED"),
             InlineKeyboardButton(text="🚫 استبعاد", callback_data=f"admin:state:{cid}:EXCLUDED"),
         ],
+        [InlineKeyboardButton(text="🧠 ذاكرة الشخص", callback_data=f"memory:contact:{contact.id}")],
         [
             InlineKeyboardButton(
-                text="🧠 ذاكرة الشخص", callback_data=f"memory:contact:{contact.id}"
+                text="🌐 اتباع الوضع العام",
+                callback_data=f"admin:state:{cid}:INHERITED",
             )
         ],
         [InlineKeyboardButton(text="⬅️ المحادثات", callback_data="a:conversations")],
@@ -176,7 +175,10 @@ def _conversation_text(
     lines = [
         f"💬 {_name(contact)}",
         "",
-        f"الحالة: {_STATE_LABELS.get(conversation.state, 'حالة خاصة')}",
+        (
+            f"الحالة: {_STATE_LABELS.get(conversation.state, 'حالة خاصة')} "
+            f"({'اختيار خاص' if conversation.state_is_explicit else 'تتبع الوضع العام'})"
+        ),
         f"الذكاء لهذا الشخص: {'مسموح' if contact.ai_allowed else 'متوقف'}",
         f"الذاكرة: {'مسموحة' if contact.memory_allowed else 'متوقفة'}",
     ]
@@ -202,9 +204,7 @@ async def conversation_detail(callback: CallbackQuery) -> None:
         return
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        pair = get_owned_conversation(
-            session, owner_id=owner.id, conversation_id=int(raw_id)
-        )
+        pair = get_owned_conversation(session, owner_id=owner.id, conversation_id=int(raw_id))
         if pair is None:
             await safe_callback_answer(callback, "لم أجد المحادثة.", show_alert=True)
             return
@@ -236,22 +236,25 @@ async def conversation_state(callback: CallbackQuery) -> None:
     if len(parts) != 4 or not parts[2].isdigit():
         await safe_callback_answer(callback, "الإجراء غير صالح.", show_alert=True)
         return
-    try:
-        target = ConversationState(parts[3])
-    except ValueError:
-        await safe_callback_answer(callback, "الحالة غير صالحة.", show_alert=True)
-        return
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        try:
-            updated = set_conversation_state(
+        if parts[3] == "INHERITED":
+            updated = clear_conversation_state_override(
                 session,
                 owner_id=owner.id,
                 conversation_id=int(parts[2]),
-                target=target,
             )
-        except ValueError:
-            updated = None
+        else:
+            try:
+                target = ConversationState(parts[3])
+                updated = set_conversation_state(
+                    session,
+                    owner_id=owner.id,
+                    conversation_id=int(parts[2]),
+                    target=target,
+                )
+            except ValueError:
+                updated = None
         if updated is not None:
             session.commit()
     if updated is None:
@@ -276,9 +279,7 @@ async def conversation_summary(callback: CallbackQuery) -> None:
         return
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        pair = get_owned_conversation(
-            session, owner_id=owner.id, conversation_id=int(raw_id)
-        )
+        pair = get_owned_conversation(session, owner_id=owner.id, conversation_id=int(raw_id))
         if pair is None:
             await safe_callback_answer(callback, "لم أجد المحادثة.", show_alert=True)
             return
@@ -328,9 +329,7 @@ async def one_time_reply_send(message: Message, state: FSMContext, bot: Bot) -> 
     conversation_id = int(data.get("admin_conversation_id") or 0)
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        pair = get_owned_conversation(
-            session, owner_id=owner.id, conversation_id=conversation_id
-        )
+        pair = get_owned_conversation(session, owner_id=owner.id, conversation_id=conversation_id)
         if pair is None or not pair[0].business_connection_id:
             await state.clear()
             await message.answer("تعذر العثور على اتصال صالح لهذه المحادثة.")
@@ -361,9 +360,7 @@ async def one_time_reply_send(message: Message, state: FSMContext, bot: Bot) -> 
         return
     with SessionLocal() as session:
         owner = OwnerRepository.get_or_create(session, settings.owner_telegram_id)
-        pair = get_owned_conversation(
-            session, owner_id=owner.id, conversation_id=conversation_id
-        )
+        pair = get_owned_conversation(session, owner_id=owner.id, conversation_id=conversation_id)
         if pair is not None:
             conversation, _ = pair
             ApprovalRepository.invalidate_pending(session, conversation.id, status="SUPERSEDED")
@@ -431,8 +428,9 @@ async def pending_detail(callback: CallbackQuery) -> None:
         await safe_callback_answer(callback, "انتهت صلاحية هذا الرد.", show_alert=True)
         return
     if callback.message:
+        reason = f"\n\nسبب المراجعة: {preview.review_summary}" if preview.review_summary else ""
         await callback.message.edit_text(
-            f"🔔 رد بانتظارك #{raw_id}\n\n{preview.text[:3400]}",
+            f"🔔 رد بانتظارك #{raw_id}\n\n{preview.text[:3200]}{reason}",
             reply_markup=approval_keyboard(int(raw_id)),
         )
     await safe_callback_answer(callback)
@@ -687,11 +685,7 @@ async def pause_home(callback: CallbackQuery) -> None:
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="⛔ إيقاف الآن", callback_data="admin:global:OFF")],
-            [
-                InlineKeyboardButton(
-                    text="▶️ تشغيل بموافقتي", callback_data="admin:global:APPROVAL"
-                )
-            ],
+            [InlineKeyboardButton(text="▶️ تشغيل بموافقتي", callback_data="admin:global:APPROVAL")],
             _back_main(),
         ]
     )

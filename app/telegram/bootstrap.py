@@ -121,6 +121,15 @@ def _persist_ai_telemetry(
             confidence=(
                 decision.confidence.model_dump(mode="json") if decision is not None else {}
             ),
+            decision_context={
+                "reason_code": getattr(decision, "reason_code", ""),
+                "effective_state": str(context.get("state") or "")[:32],
+                "conversation_state": str(context.get("conversation_state") or "")[:32],
+                "global_mode": str(context.get("global_mode") or "")[:32],
+                "state_source": str(context.get("state_source") or "")[:16],
+                "public_grounding": bool(context.get("has_public_grounding")),
+                "conflicting_grounding": bool(context.get("has_conflicting_grounding")),
+            },
             knowledge_refs=_knowledge_reference_ids(context),
             latency_ms=latency_ms,
             token_usage=getattr(result, "token_usage", {}),
@@ -209,9 +218,7 @@ async def _ensure_business_connection(bot: Bot, connection_id: str) -> bool:
 async def _live_reply_permission(bot: Bot, connection_id: str) -> tuple[bool, str]:
     """Fail closed unless Telegram confirms reply rights at send time."""
     try:
-        connection = await bot.get_business_connection(
-            business_connection_id=connection_id
-        )
+        connection = await bot.get_business_connection(business_connection_id=connection_id)
     except Exception:
         logger.exception("business_connection_send_check_failed connection=%s", connection_id)
         return False, "CONNECTION_CHECK_FAILED"
@@ -455,9 +462,7 @@ async def flow_choice_callback(callback: CallbackQuery, bot: Bot) -> None:
     with SessionLocal() as session:
         conversation = ConversationRepository.get_by_chat(
             session,
-            owner_id=OwnerRepository.get_or_create(
-                session, settings.owner_telegram_id
-            ).id,
+            owner_id=OwnerRepository.get_or_create(session, settings.owner_telegram_id).id,
             chat_id=callback.message.chat.id,
         )
         active = (
@@ -568,7 +573,7 @@ def _conversation_is_current(conversation_id: int, expected_revision: int) -> Co
         return conversation
 
 
-def _approval_context(*, intent: str, context: dict) -> dict:
+def _approval_context(*, intent: str, context: dict, decision=None) -> dict:
     sources: list[dict] = []
     for item in context.get("trusted_knowledge") or []:
         if not isinstance(item, dict):
@@ -589,11 +594,36 @@ def _approval_context(*, intent: str, context: dict) -> dict:
                 )
             }
         )
+    review_summary = (
+        decision_reason_text(
+            getattr(decision, "reason_code", ""),
+            intent=intent,
+            risk=getattr(getattr(decision, "risk", None), "value", ""),
+        )
+        if decision is not None
+        else ""
+    )
     return {
         "intent": intent.strip().upper(),
+        "risk": getattr(getattr(decision, "risk", None), "value", ""),
+        "action": getattr(getattr(decision, "action", None), "value", ""),
+        "reason_code": getattr(decision, "reason_code", ""),
+        "review_summary": review_summary[:500],
+        "effective_state": str(context.get("state") or "")[:32],
+        "global_mode": str(context.get("global_mode") or "")[:32],
+        "state_source": str(context.get("state_source") or "")[:16],
+        "has_public_grounding": bool(context.get("has_public_grounding")),
         "sources": sources,
         "has_conflicting_grounding": bool(context.get("has_conflicting_grounding")),
     }
+
+
+def _decision_reason(decision) -> str:
+    return decision_reason_text(
+        decision.reason_code,
+        intent=decision.intent,
+        risk=decision.risk.value,
+    )
 
 
 async def _send_approval_card(bot: Bot, *, approval_id: int, text: str) -> None:
@@ -653,6 +683,7 @@ async def _send_flow_turn(
         }
         if turn.handoff:
             conversation.state = ConversationState.HUMAN_TAKEOVER.value
+            conversation.state_is_explicit = True
             conversation.revision += 1
             session.commit()
 
@@ -723,11 +754,7 @@ async def _send_flow_turn(
             f"• {step_labels.get(key, 'معلومة')}: {value}"
             for key, value in (turn.collected_data or {}).items()
         )
-        summary = (
-            f"✅ اكتمل إجراء «{turn.flow_name}»\n\n"
-            f"👤 {contact_name}\n"
-            f"المحادثة: {chat_id}"
-        )
+        summary = f"✅ اكتمل إجراء «{turn.flow_name}»\n\n👤 {contact_name}\nالمحادثة: {chat_id}"
         if details:
             summary += f"\n\nالبيانات المجمعة:\n{details}"
         await bot.send_message(chat_id=settings.owner_telegram_id, text=summary[:4000])
@@ -838,6 +865,7 @@ async def _route_message_to_automation(
                     status="SUPERSEDED",
                 )
                 conversation.state = ConversationState.HUMAN_TAKEOVER.value
+                conversation.state_is_explicit = True
                 conversation.revision += 1
                 write_audit_log(
                     session,
@@ -1051,13 +1079,14 @@ async def _process_text_for_approval(
                 "💬 رسالة تحتاج تدخلك\n\n"
                 f"من: {contact_name}\n"
                 f"الرسالة: {text[:1000]}\n"
-                f"سبب التحويل: {decision_reason_text(result.decision.reason_code)}\n\n"
+                "سبب التحويل: "
+                f"{_decision_reason(result.decision)}\n\n"
                 "لم يتم إرسال رد تلقائي."
             ),
         )
         return
 
-    if result.decision.action == DecisionAction.AUTO_REPLY:
+    if result.decision.action in {DecisionAction.AUTO_REPLY, DecisionAction.ASK_FOLLOWUP}:
         with SessionLocal() as session:
             conversation = session.get(Conversation, conversation_id)
             if conversation is None or conversation.revision != expected_revision:
@@ -1072,16 +1101,18 @@ async def _process_text_for_approval(
                     reason_code=result.decision.reason_code,
                     intent=result.decision.intent,
                 ),
-                context=_approval_context(intent=result.decision.intent, context=context),
+                context=_approval_context(
+                    intent=result.decision.intent,
+                    context=context,
+                    decision=result.decision,
+                ),
                 ttl_hours=settings.approval_ttl_hours,
             )
         with SessionLocal() as session:
             claim = claim_for_send(session, approval.id)
         if claim is None:
             return
-        can_send, blocked_reason = await _live_reply_permission(
-            bot, claim.business_connection_id
-        )
+        can_send, blocked_reason = await _live_reply_permission(bot, claim.business_connection_id)
         if not can_send:
             with SessionLocal() as session:
                 mark_failed_before_send(session, approval.id, reason=blocked_reason)
@@ -1149,7 +1180,11 @@ async def _process_text_for_approval(
                 reason_code=result.decision.reason_code,
                 intent=result.decision.intent,
             ),
-            context=_approval_context(intent=result.decision.intent, context=context),
+            context=_approval_context(
+                intent=result.decision.intent,
+                context=context,
+                decision=result.decision,
+            ),
             ttl_hours=settings.approval_ttl_hours,
         )
 
@@ -1161,6 +1196,8 @@ async def _process_text_for_approval(
             f"👤 {contact_name}\n"
             f"📝 الرسالة: {text[:1000]}\n\n"
             f"✍️ رد السكرتير المقترح:\n{result.candidate_reply}\n\n"
+            "سبب المراجعة: "
+            f"{_decision_reason(result.decision)}\n\n"
             f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
         ),
     )
@@ -1295,7 +1332,8 @@ async def _process_photo_for_approval(
                 "🖼 صورة تحتاج تدخلك\n\n"
                 f"من: {contact_name}\n"
                 f"فهم الصورة: {result.vision.summary}\n"
-                f"سبب التحويل: {decision_reason_text(result.decision.reason_code)}\n\n"
+                "سبب التحويل: "
+                f"{_decision_reason(result.decision)}\n\n"
                 "لم يتم إنشاء رد قابل للإرسال تلقائيًا."
             ),
         )
@@ -1315,7 +1353,11 @@ async def _process_photo_for_approval(
                 reason_code=result.decision.reason_code,
                 intent=result.decision.intent,
             ),
-            context=_approval_context(intent=result.decision.intent, context=context),
+            context=_approval_context(
+                intent=result.decision.intent,
+                context=context,
+                decision=result.decision,
+            ),
             ttl_hours=settings.approval_ttl_hours,
         )
 
@@ -1326,6 +1368,8 @@ async def _process_photo_for_approval(
         card += f"📝 النص المقروء: {extracted_preview}\n"
     card += (
         f"\n✍️ رد السكرتير المقترح:\n{result.candidate_reply}\n\n"
+        "سبب المراجعة: "
+        f"{_decision_reason(result.decision)}\n\n"
         f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
     )
     await _send_approval_card(bot, approval_id=approval.id, text=card)
@@ -1491,7 +1535,8 @@ async def _process_media_for_approval(
                 f"{icon} {media_label} يحتاج تدخلك\n\n"
                 f"من: {contact_name}\n"
                 f"الملخص: {observation.summary[:1000]}\n"
-                f"سبب التحويل: {decision_reason_text(result.decision.reason_code)}\n\n"
+                "سبب التحويل: "
+                f"{_decision_reason(result.decision)}\n\n"
                 "لم يتم إرسال رد للعميل."
             ),
         )
@@ -1511,7 +1556,11 @@ async def _process_media_for_approval(
                 reason_code=result.decision.reason_code,
                 intent=result.decision.intent,
             ),
-            context=_approval_context(intent=result.decision.intent, context=context),
+            context=_approval_context(
+                intent=result.decision.intent,
+                context=context,
+                decision=result.decision,
+            ),
             ttl_hours=settings.approval_ttl_hours,
         )
 
@@ -1526,6 +1575,8 @@ async def _process_media_for_approval(
         card += f"📝 المحتوى المقروء: {preview}\n"
     card += (
         f"\n✍️ رد السكرتير المقترح:\n{result.candidate_reply}\n\n"
+        "سبب المراجعة: "
+        f"{_decision_reason(result.decision)}\n\n"
         f"⏳ صالح للموافقة لمدة {settings.approval_ttl_hours} ساعة"
     )
     await _send_approval_card(bot, approval_id=approval.id, text=card[:4000])

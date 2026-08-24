@@ -52,6 +52,33 @@ def test_conflicting_grounding_requires_owner_review() -> None:
     assert decision.action == DecisionAction.REQUIRE_APPROVAL
     assert decision.reason_code == "KNOWLEDGE_CONFLICT"
 
+
+def test_social_reply_uses_semantic_confidence_without_business_grounding() -> None:
+    social_confidence = Confidence(intent=0.6, retrieval=0.0, answer=0.2, policy=0.6)
+    decision = choose_action(
+        state=ConversationState.AI_AUTO,
+        intent="CONSIDERING",
+        risk=RiskLevel.LOW,
+        confidence=social_confidence,
+        has_grounding=False,
+        has_public_grounding=False,
+    )
+    assert decision.action == DecisionAction.AUTO_REPLY
+    assert decision.reason_code == "SAFE_SOCIAL_REPLY"
+
+
+def test_explicit_owner_request_escalates_even_if_model_marks_low_risk() -> None:
+    decision = choose_action(
+        state=ConversationState.AI_AUTO,
+        intent="REQUEST_OWNER",
+        risk=RiskLevel.LOW,
+        confidence=HIGH_CONF,
+        has_grounding=False,
+        has_public_grounding=False,
+    )
+    assert decision.action == DecisionAction.ESCALATE
+    assert decision.reason_code == "OWNER_REQUESTED"
+
     low_confidence = Confidence(intent=0.5, retrieval=0.8, answer=0.5, policy=0.8)
     decision = choose_action(
         state=ConversationState.AI_AUTO,

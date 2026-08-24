@@ -147,6 +147,7 @@ class ConversationRepository:
                 telegram_chat_id=chat_id,
                 business_connection_id=business_connection_id,
                 state=default_state,
+                state_is_explicit=False,
                 revision=1,
             )
             session.add(conversation)

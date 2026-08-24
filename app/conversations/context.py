@@ -20,21 +20,30 @@ class BuiltContext:
     knowledge_hits: tuple[KnowledgeHit, ...]
 
 
-def effective_state_for_global_mode(*, conversation_state: str, global_mode: str) -> str:
+def effective_state_for_global_mode(
+    *, conversation_state: str, global_mode: str, state_is_explicit: bool = False
+) -> str:
     """Apply the owner's global mode as a safety ceiling.
 
-    Global APPROVAL can make an AI_AUTO conversation stricter, but AUTO never loosens an
-    explicitly stricter per-conversation state. OBSERVE and OFF always suppress AI replies.
+    Inherited AI_AUTO/AI_APPROVAL states follow the global mode. Explicit conversation
+    overrides remain authoritative, while APPROVAL/OBSERVE/OFF can still tighten behavior.
     """
     if global_mode == GlobalMode.OFF.value:
         return ConversationState.PAUSED.value
     if global_mode == GlobalMode.OBSERVE.value:
         return ConversationState.OBSERVE_ONLY.value
+    if conversation_state not in {
+        ConversationState.AI_AUTO.value,
+        ConversationState.AI_APPROVAL.value,
+    }:
+        return conversation_state
     if (
         global_mode == GlobalMode.APPROVAL.value
         and conversation_state == ConversationState.AI_AUTO.value
     ):
         return ConversationState.AI_APPROVAL.value
+    if not state_is_explicit and global_mode == GlobalMode.AUTO.value:
+        return ConversationState.AI_AUTO.value
     return conversation_state
 
 
@@ -54,6 +63,7 @@ def build_ai_context(
     effective_state = effective_state_for_global_mode(
         conversation_state=conversation.state,
         global_mode=global_mode,
+        state_is_explicit=conversation.state_is_explicit,
     )
 
     rows = list(
@@ -128,6 +138,7 @@ def build_ai_context(
         payload={
             "state": effective_state,
             "conversation_state": conversation.state,
+            "state_source": "EXPLICIT" if conversation.state_is_explicit else "INHERITED",
             "global_mode": global_mode,
             "conversation_summary": conversation.summary,
             "conversation_has_prior_reply": continuity.has_prior_outgoing,
@@ -135,6 +146,8 @@ def build_ai_context(
             "contextual_short_reply": continuity.contextual_short_reply,
             "resolved_user_message": wrap_untrusted(continuity.resolved_text),
             "last_outgoing_question": wrap_untrusted(continuity.last_outgoing_question),
+            "last_outgoing_message": wrap_untrusted(continuity.last_outgoing_message),
+            "conversation_focus": wrap_untrusted(continuity.conversation_focus),
             "recent_messages": recent_messages,
             "trusted_knowledge": trusted_knowledge,
             "has_grounding": bool(hits),

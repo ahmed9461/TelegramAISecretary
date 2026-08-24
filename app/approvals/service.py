@@ -17,6 +17,7 @@ class ApprovalClaim:
     business_connection_id: str
     text: str
     intent: str = ""
+    review_summary: str = ""
 
 
 def format_approval_reason(*, source: str, reason_code: str, intent: str) -> str:
@@ -88,6 +89,7 @@ def preview_claim(session: Session, approval_id: int) -> ApprovalClaim | None:
         business_connection_id=conversation.business_connection_id,
         text=approval.candidate_response,
         intent=str((approval.context_json or {}).get("intent") or approval_intent(approval.reason)),
+        review_summary=str((approval.context_json or {}).get("review_summary") or "")[:500],
     )
 
 
@@ -108,6 +110,7 @@ def claim_for_send(session: Session, approval_id: int) -> ApprovalClaim | None:
         business_connection_id=conversation.business_connection_id,
         text=approval.candidate_response,
         intent=str((approval.context_json or {}).get("intent") or approval_intent(approval.reason)),
+        review_summary=str((approval.context_json or {}).get("review_summary") or "")[:500],
     )
     session.commit()
     return claim

@@ -62,6 +62,7 @@ Migrations المعروفة حاليًا:
 0007_m9_production_observability
 0008_m10_advanced_automation
 0009_v1_payments
+0010_smart_secretary_state_source
 ```
 
 ## الاختبارات
@@ -92,7 +93,16 @@ python scripts/evaluate_retrieval.py
 
 النتيجة الحالية: `14/14 top-1`.
 
-تمت بروفة V1 على قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، وانتهت عند رأس المصدر `0009`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تقرأ الرأس ديناميكيًا، تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
+لتقييم الاستقلالية والسياق والاسترجاع وأسباب التحويل بصورة مستقلة:
+
+```powershell
+python scripts/evaluate_smart_secretary.py
+python scripts/evaluate_smart_secretary.py --live-provider
+```
+
+الأمر الأول deterministic ومطلوب في CI المحلي. الأمر الثاني يستخدم DeepSeek على dataset اصطناعية فقط ولا يطبع المفتاح، ويقيس intent/risk/action الفعلية. لا تعتبر نتيجة offline بديلًا عن Telegram Business UI gate.
+
+بروفة migration تستخدم قاعدة PostgreSQL مؤقتة: `upgrade head` ثم `downgrade base` ثم `upgrade head`، ويجب أن تنتهي عند رأس المصدر الحالي `0010`. شغّلها بأداة `python -m scripts.rehearse_migrations`؛ تقرأ الرأس ديناميكيًا، تنشئ اسمًا محدودًا وآمنًا وتحذف القاعدة المؤقتة في `finally`. لا تنفذ downgrade على قاعدة حقيقية لمجرد الاختبار.
 
 لاختبار حد retry دون قطع شبكة حقيقية أو المخاطرة بتكرار رد عميل:
 
@@ -121,7 +131,7 @@ pytest
 python -m app.telegram.run
 ```
 
-يجب أن يعرض `alembic current` الرأس `0009` قبل تشغيل كود V1.
+يجب أن يعرض `alembic current` الرأس المطابق للكود (`0010` لمرشح 1.1.0) قبل تشغيله.
 
 ## اختبار حي أساسي
 

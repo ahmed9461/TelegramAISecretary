@@ -95,6 +95,7 @@ class Conversation(Base):
     telegram_chat_id: Mapped[int] = mapped_column(BigInteger, index=True)
     business_connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     state: Mapped[str] = mapped_column(String(32), default=ConversationState.AI_APPROVAL.value)
+    state_is_explicit: Mapped[bool] = mapped_column(Boolean, default=False)
     topic: Mapped[str | None] = mapped_column(String(255), nullable=True)
     priority: Mapped[str] = mapped_column(String(16), default="NORMAL")
     summary: Mapped[str] = mapped_column(Text, default="")
@@ -319,9 +320,7 @@ class PaymentOrder(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     public_id: Mapped[str] = mapped_column(String(40), unique=True, index=True)
-    owner_id: Mapped[int] = mapped_column(
-        ForeignKey("owners.id", ondelete="CASCADE"), index=True
-    )
+    owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
     conversation_id: Mapped[int] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
@@ -403,9 +402,7 @@ class AiRun(Base):
     __tablename__ = "ai_runs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    owner_id: Mapped[int] = mapped_column(
-        ForeignKey("owners.id", ondelete="CASCADE"), index=True
-    )
+    owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id", ondelete="CASCADE"), index=True)
     conversation_id: Mapped[int | None] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True
     )
@@ -420,6 +417,7 @@ class AiRun(Base):
     risk: Mapped[str] = mapped_column(String(32), default="")
     action: Mapped[str] = mapped_column(String(64), default="")
     confidence_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    decision_context_json: Mapped[dict] = mapped_column(JSON, default=dict)
     knowledge_refs_json: Mapped[list] = mapped_column(JSON, default=list)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     token_usage_json: Mapped[dict] = mapped_column(JSON, default=dict)

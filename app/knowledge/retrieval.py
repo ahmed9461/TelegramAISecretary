@@ -45,6 +45,63 @@ _TYPE_HINTS = {
     "SERVICE": {"خدمه", "خدمات", "service", "services"},
     "PRODUCT": {"منتج", "منتجات", "product", "products"},
 }
+_CONCEPT_STEMS = {
+    "PRESALES": {
+        "اشتراك",
+        "اشترك",
+        "مشترك",
+        "باقه",
+        "باقات",
+        "خطه",
+        "خطط",
+        "خيار",
+        "خيارات",
+        "ابدا",
+        "ابدأ",
+        "join",
+        "subscribe",
+        "plan",
+        "package",
+    },
+    "ONBOARDING": {
+        "تشغيل",
+        "اشغل",
+        "تفعيل",
+        "فعلت",
+        "تهيئه",
+        "اعداد",
+        "اربط",
+        "ربط",
+        "setup",
+        "activate",
+        "configure",
+    },
+    "SUPPORT": {
+        "مشكله",
+        "عطل",
+        "تعذر",
+        "دخول",
+        "ادخل",
+        "خطا",
+        "دعم",
+        "broken",
+        "issue",
+        "support",
+        "login",
+    },
+    "REFUND": {"استرجاع", "استرداد", "الغاء", "refund", "cancel"},
+    "PAYMENT": {"دفع", "سداد", "تحويل", "payment", "pay"},
+    "PRICING": {"سعر", "اسعار", "تكلفه", "رسوم", "price", "cost"},
+}
+_NEGATION_STEMS = {"مو", "غير", "ليس", "لست", "ما", "not", "isnt", "isn't"}
+_CONCEPT_TYPE_BONUS = {
+    "PRESALES": {"PRICE": 0.2, "PRODUCT": 0.16, "SERVICE": 0.12, "FAQ": 0.08},
+    "ONBOARDING": {"FAQ": 0.16, "SERVICE": 0.12, "PRODUCT": 0.08},
+    "SUPPORT": {"FAQ": 0.16, "SERVICE": 0.1, "POLICY": 0.05},
+    "REFUND": {"POLICY": 0.18, "FAQ": 0.08},
+    "PAYMENT": {"FAQ": 0.16, "POLICY": 0.1},
+    "PRICING": {"PRICE": 0.2, "PRODUCT": 0.1, "SERVICE": 0.08},
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +137,44 @@ def _tokens(value: str) -> set[str]:
         if len(token) >= 2 and token not in _STOPWORDS
     }
     tokens.update(token[2:] for token in tuple(tokens) if token.startswith("ال") and len(token) > 4)
+    tokens.update(token[1:] for token in tuple(tokens) if token.startswith("و") and len(token) > 4)
     return tokens
+
+
+def _matches_stem(tokens: set[str], stems: set[str]) -> bool:
+    return any(
+        token.startswith(stem) or stem.startswith(token) for token in tokens for stem in stems
+    )
+
+
+def infer_retrieval_intents(value: str) -> frozenset[str]:
+    """Infer a small generic lifecycle facet set for deterministic retrieval reranking."""
+    tokens = _tokens(value)
+    concepts = {
+        concept for concept, stems in _CONCEPT_STEMS.items() if _matches_stem(tokens, stems)
+    }
+    has_onboarding = "ONBOARDING" in concepts
+    has_subscription_language = _matches_stem(tokens, _CONCEPT_STEMS["PRESALES"])
+    has_negation = _matches_stem(tokens, _NEGATION_STEMS)
+    if has_onboarding:
+        concepts.discard("PRESALES")
+    elif has_subscription_language or (has_negation and "مشترك" in " ".join(tokens)):
+        concepts.add("PRESALES")
+    if "رد" in tokens and _matches_stem(tokens, {"مبلغ", "فلوس", "money"}):
+        concepts.add("REFUND")
+    return frozenset(concepts)
+
+
+def _row_concepts(row: KnowledgeItem, tokens: set[str]) -> frozenset[str]:
+    concepts = {
+        concept for concept, stems in _CONCEPT_STEMS.items() if _matches_stem(tokens, stems)
+    }
+    row_type = row.type.upper()
+    if row_type == "PRICE":
+        concepts.update({"PRICING", "PRESALES"})
+    if "ONBOARDING" in concepts:
+        concepts.discard("PRESALES")
+    return frozenset(concepts)
 
 
 def _active_at(row: KnowledgeItem, now: datetime) -> bool:
@@ -147,6 +241,7 @@ def retrieve_knowledge(
     }
     total_query_weight = sum(query_weights.values()) or 1.0
     normalized_query = normalize_search_text(query)
+    query_concepts = infer_retrieval_intents(query)
     hinted_types = {
         item_type for item_type, hints in _TYPE_HINTS.items() if query_tokens.intersection(hints)
     }
@@ -157,7 +252,9 @@ def retrieve_knowledge(
         title_tokens = _tokens(row.title)
         tag_tokens = _tokens(" ".join(row.tags_json or []))
         all_overlap = query_tokens.intersection(row_tokens[row.id])
-        if not all_overlap:
+        row_concepts = _row_concepts(row, row_tokens[row.id])
+        shared_concepts = query_concepts.intersection(row_concepts)
+        if not all_overlap and not shared_concepts:
             continue
         weighted_overlap = sum(query_weights[token] for token in all_overlap) / total_query_weight
         title_overlap = (
@@ -172,13 +269,20 @@ def retrieve_knowledge(
             0.12 if normalized_query in normalize_search_text(f"{row.title} {row.content}") else 0.0
         )
         type_bonus = 0.08 if row.type.upper() in hinted_types else 0.0
+        semantic_bonus = 0.0
+        for concept in shared_concepts:
+            semantic_bonus = max(
+                semantic_bonus,
+                0.45 + _CONCEPT_TYPE_BONUS.get(concept, {}).get(row.type.upper(), 0.0),
+            )
         score = min(
             1.0,
             (0.58 * weighted_overlap)
             + (0.28 * title_overlap)
             + (0.1 * tag_overlap)
             + phrase_bonus
-            + type_bonus,
+            + type_bonus
+            + semantic_bonus,
         )
         scored.append(
             KnowledgeHit(

@@ -368,8 +368,7 @@ async def interface_edit(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(InterfaceStates.button_label)
     if callback.message:
         await callback.message.answer(
-            f"الاسم الحالي: {row.emoji or ''} {row.label}\n\n"
-            "أرسل الاسم الجديد كما سيظهر للعميل."
+            f"الاسم الحالي: {row.emoji or ''} {row.label}\n\nأرسل الاسم الجديد كما سيظهر للعميل."
         )
     await safe_callback_answer(callback)
 
@@ -537,9 +536,7 @@ async def interface_payment_price(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(payment_stars=int(raw))
     await state.set_state(InterfaceStates.payment_description)
-    await message.answer(
-        "اكتب وصفًا واضحًا لما سيحصل عليه العميل بعد الدفع (حتى 255 حرفًا)."
-    )
+    await message.answer("اكتب وصفًا واضحًا لما سيحصل عليه العميل بعد الدفع (حتى 255 حرفًا).")
 
 
 @router.message(InterfaceStates.payment_description)
@@ -813,6 +810,7 @@ async def customer_menu_action(callback: CallbackQuery, bot: Bot) -> None:
             )
             if conversation is not None:
                 conversation.state = ConversationState.HUMAN_TAKEOVER.value
+                conversation.state_is_explicit = True
                 conversation.revision += 1
                 session.commit()
         await adapter.send_text(
@@ -954,10 +952,7 @@ async def customer_menu_action(callback: CallbackQuery, bot: Bot) -> None:
                     session.commit()
             await bot.send_message(
                 chat_id=settings.owner_telegram_id,
-                text=(
-                    f"⚠️ تعذر تجهيز رابط الدفع للطلب #{order_id}. "
-                    "لم أعد المحاولة تلقائيًا."
-                ),
+                text=(f"⚠️ تعذر تجهيز رابط الدفع للطلب #{order_id}. لم أعد المحاولة تلقائيًا."),
             )
             logger.exception("stars_invoice_link_or_delivery_failed order=%s", order_id)
         return

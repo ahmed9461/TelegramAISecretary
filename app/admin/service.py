@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.audit.service import write_audit_log
 from app.conversations.state_machine import transition
-from app.db.enums import ConversationState
-from app.db.models import Approval, Contact, Conversation, Message
+from app.db.enums import ConversationState, GlobalMode
+from app.db.models import Approval, Contact, Conversation, Message, Owner
 from app.db.repositories import ApprovalRepository, utcnow
 from app.flows.service import cancel_active_flow
 from app.memory.privacy import redact_sensitive_summary_text
@@ -156,16 +156,14 @@ def set_conversation_state(
     conversation_id: int,
     target: ConversationState,
 ) -> Conversation | None:
-    pair = get_owned_conversation(
-        session, owner_id=owner_id, conversation_id=conversation_id
-    )
+    pair = get_owned_conversation(session, owner_id=owner_id, conversation_id=conversation_id)
     if pair is None:
         return None
     conversation, contact = pair
     current = ConversationState(conversation.state)
     explicit_unexclude = current == ConversationState.EXCLUDED
     new_state = transition(current, target, explicit_unexclude=explicit_unexclude)
-    if new_state == current:
+    if new_state == current and conversation.state_is_explicit:
         return conversation
 
     if new_state in {
@@ -185,6 +183,7 @@ def set_conversation_state(
     elif explicit_unexclude:
         contact.ai_allowed = True
     conversation.state = new_state.value
+    conversation.state_is_explicit = True
     conversation.revision += 1
     write_audit_log(
         session,
@@ -194,6 +193,43 @@ def set_conversation_state(
         entity_type="CONVERSATION",
         entity_id=conversation.id,
         metadata={"from_state": current.value, "to_state": new_state.value},
+    )
+    session.flush()
+    return conversation
+
+
+def clear_conversation_state_override(
+    session: Session,
+    *,
+    owner_id: int,
+    conversation_id: int,
+) -> Conversation | None:
+    pair = get_owned_conversation(session, owner_id=owner_id, conversation_id=conversation_id)
+    if pair is None:
+        return None
+    conversation, contact = pair
+    owner = session.get(Owner, owner_id)
+    mode = owner.default_mode if owner is not None else GlobalMode.APPROVAL.value
+    inherited_state = (
+        ConversationState.AI_AUTO.value
+        if mode == GlobalMode.AUTO.value
+        else ConversationState.AI_APPROVAL.value
+    )
+    previous_state = conversation.state
+    conversation.state = inherited_state
+    conversation.state_is_explicit = False
+    contact.is_excluded = False
+    contact.ai_allowed = True
+    conversation.revision += 1
+    refresh_conversation_summary(session, conversation=conversation)
+    write_audit_log(
+        session,
+        owner_id=owner_id,
+        actor="OWNER_TELEGRAM",
+        action="CONVERSATION_STATE_OVERRIDE_CLEARED",
+        entity_type="CONVERSATION",
+        entity_id=conversation.id,
+        metadata={"from_state": previous_state, "inherited_state": inherited_state},
     )
     session.flush()
     return conversation

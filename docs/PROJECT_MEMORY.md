@@ -4,7 +4,7 @@
 
 ## الحالة الحالية
 
-- المرحلة الحالية: **V1 مكتملة** بالإصدار `1.0.0` ورأس migration `0009`.
+- الإصدار المنشور الحالي: **V1 `1.0.0/0009`**. نطاق Smart Secretary Autonomy & Context يجهز المرشح `1.1.0/0010` على فرع مستقل، ولا يعد منشورًا حتى نجاح CI وبوابة Telegram Business الحية.
 - V1 اندمجت في `main` عبر PR #9؛ merge SHA: `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`، وNew‑VPS مثبت عليه.
 - M6 اندمج في `main` عبر PR #2؛ merge SHA: `14011292fe2181618854dae948dae92b79ef3b86`.
 - M7 اندمج في `main` عبر PR #3؛ merge SHA: `3f72caef6a9facb82fdbe2e39aa1a016d2823238`.
@@ -173,6 +173,15 @@ Telegram image → Gemini Vision → structured evidence → DeepSeek → local 
 - GitHub Actions run `32670663258` نجح على Python 3.12 و3.13. نشر commit `137d939` على New‑VPS نجح عند `0009` وproduction preflight كامل.
 - GitHub Actions run `32671236353` نجح بعد إضافة أدلة النشر، ثم اندمج PR #9 وثُبت New‑VPS على merge SHA `db68fda`.
 - backup قبل النشر استعيد عند `0008` وbackup بعده استعيد عند `0009` بأعداد الإنتاج 1/2/46 دون فقد، والحاويتان non-root/restart=0 والسجلات بلا أخطاء.
+
+## Smart Secretary Autonomy & Context — 2026-08-24
+
+- baseline الـeval قبل تغيير السلوك: `30/53` offline و`0/12` في تصنيف provider الحي.
+- أضيفت taxonomy عامة تفصل social/presales/information عن authorization/commitment، والسياسة المحلية ما زالت صاحبة قرار الإرسال.
+- migration `0010` تضيف `conversations.state_is_explicit` و`ai_runs.decision_context_json`؛ backfill يحافظ على الحالات المشددة ويستخدم audit لإثبات overrides القديمة.
+- الاسترجاع بقي PostgreSQL-first مع lifecycle reranking عام، والاستمرارية تربط الرد القصير بالـturn المجاور فقط مع bounded conversation focus.
+- أسباب التحويل أصبحت حسب intent والقرار، وتخزن review summary آمنة في approval metadata دون chain-of-thought.
+- بوابة offline بعد التنفيذ: `53/53`، وتصنيف provider الحي `12/12`، وM7 retrieval `14/14`، وpytest `135 passed` مع التحذير المعروف، وRuff/compileall نجحت. Migration rehearsal المعزولة وصلت `0010`. نتائج Docker/CI/Telegram الحية توثق عند اكتمالها ولا تستنتج مسبقًا.
 
 ## قواعد الاستمرارية
 

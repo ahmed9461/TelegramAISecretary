@@ -469,3 +469,33 @@ health/ready/metrics auth: 200/200/401→200
 - backup ما بعد النشر استعيد معزولًا عند `0009`: owners=1/conversations=2/messages=46/payment_orders=0، ثم حُذفت قاعدة البروفة وحدها.
 - api/bot يعملان بالمستخدم `secretary` مع restart=0، ومسح السجلات أعاد 0 أخطاء/Traceback/تعارض polling.
 - نجح CI التوثيق النهائي run `32671236353`، ثم اندمج PR #9 بعد البوابة الحية وثُبت New‑VPS على merge SHA `db68fda` مع readiness عند `0009`.
+
+## Smart Secretary Autonomy & Context — 2026-08-24
+
+**Status: مرشح 1.1.0 قيد بوابة النشر والاختبار الحي.**
+
+### Implemented
+
+- فصل inherited/explicit conversation state بمخطط additive وزر «اتباع الوضع العام».
+- taxonomy دلالية عامة للرسائل الاجتماعية وpre-sales والمعلومات والدعم والقرارات الحساسة.
+- HIGH يعتمد على الفعل والسلطة المطلوبة، لا على مجرد ذكر السعر/الدفع/الاسترجاع/الخصم.
+- no-grounding يسمح بالرد الاجتماعي أو سؤال توضيح محدود، ولا يسمح باختراع حقيقة تجارية.
+- lifecycle-aware PostgreSQL reranking دون Vector DB أو نشاط hardcoded.
+- adjacent-turn continuity للعدد/الاختيار/نتيجة troubleshooting/الإغلاق مع منع stale question وtopic shift.
+- handoff/review summary خاص بالحالة، وbounded AiRun decision context دون نصوص محادثة أو prompts.
+- eval dataset مستقلة تشمل لهجات عربية وإنجليزية، ambiguous/negative/sensitive controls.
+
+### Measured gates so far
+
+```text
+baseline offline eval: 30/53
+after offline eval: 53/53
+baseline live classifier eval: 0/12
+after live classifier eval: 12/12
+pytest: 135 passed, 1 known warning
+M7 retrieval regression: 14/14
+Ruff full / compileall: PASS
+isolated PostgreSQL migration rehearsal: PASS at 0010
+```
+
+لا تسجل Telegram UI أو CI أو New‑VPS كـPASS حتى تنفذ وتضاف أدلتها إلى `SMART_SECRETARY_LIVE_TEST_REPORT.md`.

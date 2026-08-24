@@ -4,7 +4,7 @@
 
 ## الحالة الحالية
 
-**V1 مكتملة ومندمجة في `main`** عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2`. الإصدار الحالي هو **1.0.0** ورأس PostgreSQL هو **0009**، وNew‑VPS مثبت على SHA الدمج بعد نجاح البوابة الحية.
+**V1 المنشورة** مدمجة في `main` عبر PR #9 بالـSHA `db68fda8046ff90a2958e9f0c33de1e6ba8fb5b2` عند **1.0.0/0009**. فرع Smart Secretary الحالي يجهز المرشح **1.1.0/0010** لتحسين AUTO والسياق والتحويل؛ لا يصبح إصدارًا منشورًا حتى نجاح CI وبوابة Telegram Business الحية وتوثيقهما.
 
 نجحت البوابات المحلية والحية لمحادثة السياق والوسائط وNative Rich Message وTelegram Stars، مع PostgreSQL/Docker ومزودي Telegram وDeepSeek وGemini. يبقى `main` على baseline M10 حتى نجاح بوابة الإنتاج، تنفيذًا لقاعدة عدم الدمج قبل الاختبار الحي النهائي.
 
@@ -17,7 +17,7 @@ retrieval evaluation: 14/14 top-1
 Ruff full gate: PASS
 compileall: PASS
 pytest: 130 passed, 1 warning
-PostgreSQL head: 0009
+PostgreSQL head: 0010
 isolated migration rehearsal: PASS
 Docker build/non-root smoke: PASS
 backup/restore rehearsal: PASS

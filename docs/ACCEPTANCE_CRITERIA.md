@@ -210,3 +210,21 @@ live test للميزات التي تعتمد على Telegram الحقيقي: PAS
 - [x] Telegram Stars يتحقق من XTR/المبلغ/العميل ولا يسلم إلا بعد `successful_payment` مطابق وغير مكرر.
 - [x] دليل مالك عربي شامل يغطي الإعداد والتشغيل والخصوصية والقوائم والدفع والتشخيص.
 - [x] بوابة V1 المحلية/DB/Docker/backup/live/CI النهائية ودمج PR #9 وتثبيت New‑VPS على SHA الدمج.
+
+## Smart Secretary Autonomy & Context — Candidate 1.1.0
+
+- [x] global AUTO يخفف الحالة الموروثة القديمة ولا يلغي override صريحًا أو HUMAN_TAKEOVER/EXCLUDED/PAUSED.
+- [x] social/thanks/acknowledgment/considering/decline/close لا تحتاج business grounding.
+- [x] published price/refund/discount information منفصل عن اعتماد refund/discount/commitment فعلي.
+- [x] request-owner ينتقل محليًا للتحويل حتى لو صنفه المزود LOW.
+- [x] pre-sales paraphrases تسترجع الباقات بدل onboarding بعد الاشتراك.
+- [x] الرد القصير يستخدم الـturn المجاور وtopic shift لا يعيد استخدام سؤال قديم.
+- [x] أسباب التحويل متعددة ومحددة ولا تحتوي provider/reason enum/chain-of-thought.
+- [x] no silent learning وPUBLIC/INTERNAL/PRIVATE boundaries لم تتغير.
+- [x] offline Smart Secretary eval: `53/53` بعد baseline `30/53`.
+- [x] live provider classifier eval: `12/12` بعد baseline `0/12`.
+- [x] M7 retrieval regression: `14/14`.
+- [x] PostgreSQL migration rehearsal: `upgrade → downgrade base → upgrade` عند `0010`.
+- [ ] Docker/ready/preflight والـbackup/restore بعد migration.
+- [ ] GitHub Actions Python 3.12/3.13.
+- [ ] Telegram Business UI scenarios باستخدام Contact اختبار فقط.

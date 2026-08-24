@@ -230,3 +230,21 @@ Replies with a genuine title/list structure are rendered to native Rich Message 
 **Status:** Accepted
 
 Owner-configured digital payment buttons create one-time `XTR` orders and Telegram invoice links. Pre-checkout validates payload, contact, currency, amount, state and expiry. Delivery occurs only after `successful_payment`, with Telegram charge ID uniqueness and idempotent duplicate handling. Product copy, price and success message are data, not Core constants. External URL buttons remain available for legitimate off-platform/physical payment gateways, while provider-specific API/webhook integrations require a separate signed adapter and must not store credentials in menu data.
+
+## ADR-039 — Conversation AI state records explicit ownership
+**Date:** 2026-08-24
+**Status:** Accepted
+
+`conversations.state_is_explicit` distinguishes a per-conversation owner choice from a state inherited when the conversation was created. Inherited `AI_AUTO/AI_APPROVAL` follows the current global AUTO/APPROVAL mode; explicit overrides and strict states remain authoritative, while global APPROVAL/OBSERVE/OFF may still tighten behavior. Migration `0010` marks strict legacy states explicit and uses `CONVERSATION_STATE_CHANGED` audit evidence to preserve legacy explicit AI overrides. The owner can clear an override explicitly from Telegram.
+
+## ADR-040 — Intent taxonomy separates information from authority
+**Date:** 2026-08-24
+**Status:** Accepted
+
+Core uses a general semantic intent taxonomy, canonicalized before deterministic policy. Social turns can reply without business grounding. Price, payment, subscription, refund and discount topics are LOW when they only ask for grounded published information; actual refund approval, unapproved discount grants, binding promises, private disclosure and sensitive owner actions are HIGH. The provider classifies, but local policy still owns action and enforces sensitive intent classes even if the reported risk is too low.
+
+## ADR-041 — PostgreSQL retrieval uses bounded lifecycle reranking
+**Date:** 2026-08-24
+**Status:** Accepted
+
+Lexical scoring remains the base and M7 regression remains mandatory. A bounded generic lifecycle facet layer reranks pre-sales, onboarding, support, pricing, refund and payment knowledge using normalized text, knowledge type and metadata. It is not an activity-specific phrase whitelist and introduces no vector infrastructure. Multi-turn enrichment uses only the adjacent secretary turn plus a bounded prior contact focus, preventing stale-question reuse.
