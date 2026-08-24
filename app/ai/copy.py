@@ -12,12 +12,19 @@ _INTERNAL_CODE_LINE = re.compile(
     r"NON_PUBLIC_GROUNDING|SAFE_AUTO|KNOWLEDGE_CONFLICT|REQUIRE_APPROVAL|"
     r"AUTO_REPLY|ESCALATE|SILENT|STATE_[A-Z_]+)\b.*$"
 )
+_ARABIC_MARKS = r"[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed]*"
+_AHLAN = (
+    rf"(?:أ{_ARABIC_MARKS}ه{_ARABIC_MARKS}ل{_ARABIC_MARKS}ا{_ARABIC_MARKS}|"
+    rf"ا{_ARABIC_MARKS}ه{_ARABIC_MARKS}ل{_ARABIC_MARKS}ا{_ARABIC_MARKS})"
+)
+_SAHLAN = rf"س{_ARABIC_MARKS}ه{_ARABIC_MARKS}ل{_ARABIC_MARKS}ا{_ARABIC_MARKS}"
 _OPENING_GREETING = re.compile(
-    r"^\s*(?:(?:السلام\s+عليكم(?:\s+ورحمة\s+الله(?:\s+وبركاته)?)?)|"
-    r"(?:وعليكم\s+السلام(?:\s+ورحمة\s+الله(?:\s+وبركاته)?)?)|"
-    r"(?:(?:أهلا|اهلا)(?:ً)?(?:\s+وسهلا(?:ً)?)?)|(?:هلا(?:\s+والله)?)|"
-    r"(?:مرحبا(?:ً)?(?:\s+بك)?)|(?:حياك\s+الله)|(?:hello|hi|welcome))"
-    r"\s*[!,.،؛;:\-–—]*\s*",
+    rf"^\s*(?:(?:السلام\s+عليكم(?:\s+ورحمة\s+الله(?:\s+وبركاته)?)?)|"
+    rf"(?:وعليكم\s+السلام(?:\s+ورحمة\s+الله(?:\s+وبركاته)?)?)|"
+    rf"(?:{_AHLAN}(?:\s+و{_SAHLAN})?(?:\s+بك(?:م)?)?)|"
+    rf"(?:هلا(?:\s+(?:والله|بك(?:م)?))?)|"
+    rf"(?:مرحبا(?:ً)?(?:\s+بك(?:م)?)?)|(?:حياك\s+الله)|(?:hello|hi|welcome))"
+    rf"(?=\s|[!,.،؛;:\-–—]|$)\s*[!,.،؛;:\-–—]*\s*",
     re.IGNORECASE,
 )
 _PAIRED_MARKDOWN = re.compile(r"(?:\*\*|__)(.+?)(?:\*\*|__)", re.DOTALL)

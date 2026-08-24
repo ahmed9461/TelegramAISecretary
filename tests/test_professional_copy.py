@@ -27,6 +27,18 @@ def test_customer_copy_removes_only_repeated_opening_greeting() -> None:
         "هلا والله! الباقة الأنسب لأربع مجموعات هي الباقة المرنة.",
         allow_greeting=False,
     ) == "الباقة الأنسب لأربع مجموعات هي الباقة المرنة."
+    assert polish_candidate_reply(
+        "أهلا بك، يسعدني توضيح خطوات الاشتراك.",
+        allow_greeting=False,
+    ) == "يسعدني توضيح خطوات الاشتراك."
+    assert polish_candidate_reply(
+        "أهلًا بكم، هذه هي الباقات المتاحة.",
+        allow_greeting=False,
+    ) == "هذه هي الباقات المتاحة."
+    assert polish_candidate_reply(
+        "أهلاوية الخدمة مذكورة في المصدر.",
+        allow_greeting=False,
+    ) == "أهلاوية الخدمة مذكورة في المصدر."
     assert polish_candidate_reply("أهلًا بك! كيف أقدر أساعدك؟") == "أهلًا بك! كيف أقدر أساعدك؟"
 
 
